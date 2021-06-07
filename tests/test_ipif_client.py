@@ -56,3 +56,21 @@ def test_ipif_init_with_endpoint_config():
 
     assert ipif._endpoints["APIS"] == URI
     assert ipif._endpoints["other"] == "http://something-different.net"
+
+
+def test_ipif_initialises_with_ipif_type_classes():
+    ipif = IPIF()
+    assert ipif.Person
+
+    assert ipif.Person._ipif_instance is ipif
+
+    assert ipif.Source._ipif_instance is ipif
+    assert ipif.Statement._ipif_instance is ipif
+    assert ipif.Factoid._ipif_instance is ipif
+
+    ipif.add_endpoint(label="APIS", uri=URI)
+
+    assert ipif.Person._ipif_instance._endpoints["APIS"] == URI
+    assert ipif.Source._ipif_instance._endpoints["APIS"] == URI
+    assert ipif.Statement._ipif_instance._endpoints["APIS"] == URI
+    assert ipif.Factoid._ipif_instance._endpoints["APIS"] == URI
