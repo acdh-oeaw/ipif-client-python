@@ -18,6 +18,18 @@ class IPIFType:
     def __repr__(self):
         return self.__str__()
 
+    def __getitem__(self, name):
+        return self._data_dict.get(name)
+
+    def __getattribute__(self, name):
+        # Don't do it like this!!!
+        # Use a 'is_only_ref' flag... then grab the real object
+        # and swap them out!!
+        if object.__getattribute__(self, name):
+            return object.__getattribute__(self, name)
+        else:
+            return "GO GET FROM SERVER"
+
     @classmethod
     def id(cls, id_string):
         resp = cls._ipif_instance._request_id_from_endpoints(
@@ -28,36 +40,53 @@ class IPIFType:
         for endpoint_name, data in resp.items():
             return cls._init_from_id_json(data, endpoint_name=endpoint_name)
 
-
-class IPIFPersons(IPIFType):
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
+        # print(r)
         o = cls()
         o.id = f"{endpoint_name}::{r['@id']}"
         o.local_id = r["@id"]
         o.label = r.get("label", None)
         o.uris = r.get("uris", [])
+        o.createdBy = r.get("createdBy", "")
+        o.modifiedBy = r.get("modifiedBy", "")
 
-        o.factoids = [
-            cls._ipif_instance.Factoids._init_from_ref_json(f_json)
-            for f_json in r.get("factoid-refs", [])
-        ]
+        if cls.__name__ != "Factoid":
+            o.factoids = [
+                cls._ipif_instance.Factoids._init_from_ref_json(f_json)
+                for f_json in r.get("factoid-refs", [])
+            ]
 
         o._data_dict = r
 
         return o
 
-    def __getitem__(self, name):
-        return self._data_dict.get(name)
+    @classmethod
+    def _init_from_ref_json(cls, r):
+        o = cls()
+        o.id = r["@id"]
+        return o
 
-    def __getattribute__(self, name):
-        if object.__getattribute__(self, name):
-            return object.__getattribute__(self, name)
-        else:
-            return "GO GET FROM SERVER"
+
+class IPIFPersons(IPIFType):
+
+    # Inherity _init_from_id_json
+
+    pass
 
 
 class IPIFFactoids(IPIFType):
+    @classmethod
+    def _init_from_id_json(cls, r, endpoint_name):
+        o = super()._init_from_id_json(r, endpoint_name=endpoint_name)
+        o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
+        o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
+        o.statements = [
+            cls._ipif_instance.Statements._init_from_ref_json(st_json)
+            for st_json in r.get("statement-refs", [])
+        ]
+        return o
+
     @classmethod
     def _init_from_ref_json(cls, r):
         o = cls()
@@ -67,24 +96,17 @@ class IPIFFactoids(IPIFType):
             for st_json in r.get("statement-refs", [])
         ]
         o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
+        o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
 
         return o
 
 
 class IPIFStatements(IPIFType):
-    @classmethod
-    def _init_from_ref_json(cls, r):
-        o = cls()
-        o.id = r["@id"]
-        return o
+    pass
 
 
 class IPIFSources(IPIFType):
-    @classmethod
-    def _init_from_ref_json(cls, r):
-        o = cls()
-        o.id = r["@id"]
-        return o
+    pass
 
 
 def _error_if_no_endpoints(func):
