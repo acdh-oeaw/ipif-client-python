@@ -6,7 +6,7 @@ from .test_data import TEST_PERSON_RESPONSE
 def test_create_person_from_init_json():
     ipif = IPIF()
 
-    p = ipif.Persons._init_from_id_json(TEST_PERSON_RESPONSE)
+    p = ipif.Persons._init_from_id_json(TEST_PERSON_RESPONSE, endpoint_name="APIS")
 
     assert type(p).__name__ == "Person"
     assert isinstance(p, ipif.Persons)
@@ -40,16 +40,18 @@ def test_create_factoid_from_factoid_ref_json():
         }
     )
 
-    assert f.local_id == "factoid__39986__original_source_3994"
+    assert f.id == "factoid__39986__original_source_3994"
     assert len(f.statements) == 2
     assert isinstance(f.statements[0], ipif.Statements)
 
     assert isinstance(f.source, ipif.Sources)
 
 
+"""
 def test_thing():
     ipif = IPIF()
 
     p = ipif.Persons._init_from_id_json({"@id": "something"})
 
     assert p.label == "GO GET FROM SERVER"
+"""
