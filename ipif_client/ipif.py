@@ -1,5 +1,5 @@
 import requests
-from typing import Callable
+from typing import Callable, Dict
 
 
 class IPIFClientConfigurationError(Exception):
@@ -7,23 +7,84 @@ class IPIFClientConfigurationError(Exception):
 
 
 class IPIFType:
-    pass
+    _data_cache: Dict = {}
+
+    def __str__(self):
+        if hasattr(self, "label"):
+            return f"{self.__class__.__name__}: {self.label}"
+        else:
+            return f"{self.__class__.__name__}: {self.id}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @classmethod
+    def id(cls, id_string):
+        resp = cls._ipif_instance._request_id_from_endpoints(
+            cls.__name__.lower() + "s", id_string
+        )
+        cls._data_cache[id_string] = resp
+
+        for endpoint_name, data in resp.items():
+            return cls._init_from_id_json(data, endpoint_name=endpoint_name)
 
 
-class IPIFPerson(IPIFType):
-    pass
+class IPIFPersons(IPIFType):
+    @classmethod
+    def _init_from_id_json(cls, r, endpoint_name):
+        o = cls()
+        o.id = f"{endpoint_name}::{r['@id']}"
+        o.local_id = r["@id"]
+        o.label = r.get("label", None)
+        o.uris = r.get("uris", [])
+
+        o.factoids = [
+            cls._ipif_instance.Factoids._init_from_ref_json(f_json)
+            for f_json in r.get("factoid-refs", [])
+        ]
+
+        o._data_dict = r
+
+        return o
+
+    def __getitem__(self, name):
+        return self._data_dict.get(name)
+
+    def __getattribute__(self, name):
+        if object.__getattribute__(self, name):
+            return object.__getattribute__(self, name)
+        else:
+            return "GO GET FROM SERVER"
 
 
-class IPIFStatement(IPIFType):
-    pass
+class IPIFFactoids(IPIFType):
+    @classmethod
+    def _init_from_ref_json(cls, r):
+        o = cls()
+        o.id = r["@id"]
+        o.statements = [
+            cls._ipif_instance.Statements._init_from_ref_json(st_json)
+            for st_json in r.get("statement-refs", [])
+        ]
+        o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
+
+        return o
 
 
-class IPIFFactoid(IPIFType):
-    pass
+class IPIFStatements(IPIFType):
+    @classmethod
+    def _init_from_ref_json(cls, r):
+        o = cls()
+        o.id = r["@id"]
+        return o
 
 
-class IPIFSource(IPIFType):
-    pass
+class IPIFSources(IPIFType):
+    @classmethod
+    def _init_from_ref_json(cls, r):
+        o = cls()
+        o.id = r["@id"]
+        return o
 
 
 def _error_if_no_endpoints(func):
@@ -53,10 +114,10 @@ class IPIF:
         # each instance has its own classes, so class itself holds reference back
         # to this class. (This so so we can do ipif.Person.id() etc. in Django fashion;
         # but also keep each of these classes bound to their IPIF instance)
-        self.Person = type("Person", (IPIFPerson,), {"_ipif_instance": self})
-        self.Statement = type("Statement", (IPIFStatement,), {"_ipif_instance": self})
-        self.Factoid = type("Factoid", (IPIFFactoid,), {"_ipif_instance": self})
-        self.Source = type("Source", (IPIFSource,), {"_ipif_instance": self})
+        self.Persons = type("Person", (IPIFPersons,), {"_ipif_instance": self})
+        self.Statements = type("Statement", (IPIFStatements,), {"_ipif_instance": self})
+        self.Factoids = type("Factoid", (IPIFFactoids,), {"_ipif_instance": self})
+        self.Sources = type("Source", (IPIFSources,), {"_ipif_instance": self})
 
     def add_endpoint(self, name=None, uri=None):
         if not name or not uri:
@@ -81,7 +142,7 @@ class IPIF:
     def _request_single_object_by_id(self, endpoint_name, ipif_type, id_string):
 
         URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}/{id_string}"
-        print(URL)
+        print(f"Getting {URL}...")
         try:
             resp = requests.get(URL)
         except requests.exceptions.ConnectionError:
@@ -97,7 +158,7 @@ class IPIF:
     @_error_if_no_endpoints
     def _request_id_from_endpoints(self, ipif_type, id_string):
         results = {}
-        for endpoint_name, endpoint_uri in self._endpoints.items():
+        for endpoint_name in self._endpoints:
             result = self._request_single_object_by_id(
                 endpoint_name, ipif_type, id_string
             )
