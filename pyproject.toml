@@ -8,6 +8,8 @@ authors = ["Richard Hadden <richard.hadden@oeaw.ac.at>"]
 python = "^3.9"
 requests = "^2.25.1"
 pytest-httpserver = "^1.0.0"
+bunch = "^1.0.1"
+python-dateutil = "^2.8.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

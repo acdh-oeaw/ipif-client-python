@@ -1,3 +1,5 @@
+from bunch import Bunch
+from dateutil.parser import *
 import requests
 from typing import Callable, Dict
 
@@ -49,7 +51,14 @@ class IPIFType:
         o.label = r.get("label", None)
         o.uris = r.get("uris", [])
         o.createdBy = r.get("createdBy", "")
+        o.createdWhen = (
+            parse(r["createdWhen"].replace("Z", "")) if "createdWhen" in r else None
+        )
+
         o.modifiedBy = r.get("modifiedBy", "")
+        o.modifiedWhen = (
+            parse(r["modifiedWhen"].replace("Z", "")) if "modifiedWhen" in r else None
+        )
 
         if cls.__name__ != "Factoid":
             o.factoids = [
@@ -68,13 +77,6 @@ class IPIFType:
         return o
 
 
-class IPIFPersons(IPIFType):
-
-    # Inherity _init_from_id_json
-
-    pass
-
-
 class IPIFFactoids(IPIFType):
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
@@ -91,22 +93,39 @@ class IPIFFactoids(IPIFType):
     def _init_from_ref_json(cls, r):
         o = cls()
         o.id = r["@id"]
+        o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
+        o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
         o.statements = [
             cls._ipif_instance.Statements._init_from_ref_json(st_json)
             for st_json in r.get("statement-refs", [])
         ]
-        o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
-        o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
-
         return o
 
 
-class IPIFStatements(IPIFType):
+class IPIFPersons(IPIFType):
     pass
 
 
 class IPIFSources(IPIFType):
     pass
+
+
+class IPIFStatements(IPIFType):
+    @classmethod
+    def _init_from_id_json(cls, r, endpoint_name):
+        o = super()._init_from_id_json(r, endpoint_name=endpoint_name)
+        o.statementType = Bunch(r.get("statementType", {})) or None
+        o.name = r.get("name", None)
+        o.memberOf = Bunch(r.get("memberOf", {})) or None
+        o.role = Bunch(r.get("role", {})) or None
+        o.date = Bunch(r.get("date", {})) or None
+        o.date.sortdate = parse(o.date.sortdate).replace(tzinfo=None)
+        o.statementText = r.get("statementText", None)
+
+        o.places = [Bunch(p) for p in r.get("places", [])]
+        o.relatesToPersons = [Bunch(p) for p in r.get("relatesToPersons", [])]
+
+        return o
 
 
 def _error_if_no_endpoints(func):
