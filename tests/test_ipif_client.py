@@ -3,7 +3,12 @@ import requests
 
 from ipif_client import __version__
 
-from ipif_client.ipif import IPIF, IPIFClientConfigurationError
+from ipif_client.ipif import (
+    IPIF,
+    IPIFQuerySet,
+    IPIFClientConfigurationError,
+    IPIFClientQueryError,
+)
 
 URI = "http://some-ipif-endpoint.com/ipif/"
 
@@ -150,3 +155,46 @@ def test_doing_id_request_from_ipif_type(httpserver):
     ipif.Persons.id("anIdString")
 
     assert ipif.Persons._data_cache["anIdString"] == {"TEST": {"@id": "anIdString"}}
+
+
+def test_search_queries_return_queryset_of_right_type():
+    ipif = IPIF()
+
+    qs = ipif.Persons.factoidId("someFactoidId")
+
+    assert isinstance(qs, IPIFQuerySet)
+    assert isinstance(qs, ipif._PersonsQuerySet)
+    assert qs.__class__.__name__ == "PersonsQuerySet"
+
+
+def test_queryset_methods_return_queryset():
+    ipif = IPIF()
+
+    qs = ipif._PersonsQuerySet()
+
+    assert isinstance(qs, ipif._PersonsQuerySet)
+
+    qs2 = qs.factoidId("someFactoidId")
+
+    assert isinstance(qs, ipif._PersonsQuerySet)
+
+    assert qs2._search_params == {"factoidId": "someFactoidId"}
+
+    qs3 = qs2.f("someFactoidSearchTerm")
+    assert qs3._search_params == {
+        "factoidId": "someFactoidId",
+        "f": "someFactoidSearchTerm",
+    }
+
+
+def test_id_functions_raise_error_on_own_class():
+    ipif = IPIF()
+
+    with pytest.raises(IPIFClientQueryError):
+        ipif._PersonsQuerySet().personId("something")
+
+    with pytest.raises(IPIFClientQueryError):
+        ipif._StatementsQuerySet().statementId("something")
+
+    with pytest.raises(IPIFClientQueryError):
+        ipif.Persons.personId("something")

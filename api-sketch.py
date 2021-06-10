@@ -37,6 +37,35 @@ ipif.Persons.source(
     "http://something.net/theDude"
 )  # => returns list of Persons instances
 
+ipif.Persons.factoidId()
+
 ipif.Persons.filter_by_statement(
     name="John", fromDate=1901, toDate="asdf"
 )  # returns PersonsQuerySet, resolves to list of Persons
+
+
+# Search params
+"""
+size
+page
+sortBy
+p
+factoidId
+f
+statementId
+st
+sourceId
+s
+"""
+
+# Statement params
+"""
+statementText
+relatesToPerson
+memberOf
+role
+name
+from
+to
+place
+"""

@@ -1,15 +1,76 @@
+from functools import wraps
 from bunch import Bunch
 from dateutil.parser import *
 import requests
 from typing import Callable, Dict
 
 
-class IPIFClientConfigurationError(Exception):
+class IPIFClientException(Exception):
     pass
+
+
+class IPIFClientConfigurationError(IPIFClientException):
+    pass
+
+
+class IPIFClientQueryError(IPIFClientException):
+    pass
+
+
+class IPIFQuerySet:
+    def __init__(self, search_params=None, *args, **kwargs):
+        self._search_params = search_params or {}
+
+    def _spawn_new_with_search_param(param: str):
+        def inner_func(self, value):
+            class_name = self.__class__.__name__.replace("sQuerySet", "")
+            if param == class_name.lower() + "Id":
+                raise IPIFClientQueryError(f"")
+
+            return self.__class__(
+                search_params={
+                    **self._search_params,
+                    param: value,
+                }
+            )
+
+        return inner_func
+
+    factoidId = _spawn_new_with_search_param("factoidId")
+    f = _spawn_new_with_search_param("f")
+    sourceId = _spawn_new_with_search_param("sourceId")
+    s = _spawn_new_with_search_param("s")
+    statementId = _spawn_new_with_search_param("statementId")
+    st = _spawn_new_with_search_param("st")
+    personId = _spawn_new_with_search_param("personId")
+    p = _spawn_new_with_search_param("p")
 
 
 class IPIFType:
     _data_cache: Dict = {}
+
+    def _proxy_to_new_queryset(method_name):
+        """Define a method on IPIFType that creates a new QuerySet
+        and calls the named method on that QuerySet (returning a new
+        queryset)"""
+
+        @classmethod
+        @wraps(getattr(IPIFQuerySet, method_name))
+        def inner(cls, *args, **kwargs):
+            query_set = cls._queryset()
+            query_set_method = getattr(query_set, method_name, None)
+            return query_set_method(*args, **kwargs)
+
+        return inner
+
+    factoidId = _proxy_to_new_queryset("factoidId")
+    f = _proxy_to_new_queryset("f")
+    sourceId = _proxy_to_new_queryset("sourceId")
+    s = _proxy_to_new_queryset("s")
+    statementId = _proxy_to_new_queryset("statementId")
+    st = _proxy_to_new_queryset("st")
+    personId = _proxy_to_new_queryset("personId")
+    p = _proxy_to_new_queryset("p")
 
     def __str__(self):
         if hasattr(self, "label"):
@@ -143,6 +204,16 @@ def _error_if_no_endpoints(func):
 
 
 class IPIF:
+    def _build_queryset_class(self, qs_class_name):
+        """Creates an IPIFQuerySet subclass type to be bound to
+        an IPIF instance, giving access via _ipif_instance variable
+        back to the instance of this class"""
+        return type(
+            qs_class_name,
+            (IPIFQuerySet,),
+            {"_ipif_instance": self},
+        )
+
     def __init__(self, config={}):
         self._endpoints = {}
 
@@ -159,6 +230,19 @@ class IPIF:
         self.Statements = type("Statement", (IPIFStatements,), {"_ipif_instance": self})
         self.Factoids = type("Factoid", (IPIFFactoids,), {"_ipif_instance": self})
         self.Sources = type("Source", (IPIFSources,), {"_ipif_instance": self})
+
+        # Also set up a QuerySet and add it to the class for reference
+        self._PersonsQuerySet = self._build_queryset_class("PersonsQuerySet")
+        self.Persons._queryset = self._PersonsQuerySet
+
+        self._StatementsQuerySet = self._build_queryset_class("StatementsQuerySet")
+        self.Statements._queryset = self._StatementsQuerySet
+
+        self._FactoidsQuerySet = self._build_queryset_class("FactoidsQuerySet")
+        self.Factoids._queryset = self._FactoidsQuerySet
+
+        self._SourcesQuerySet = self._build_queryset_class("SourcesQuerySet")
+        self.Sources._queryset = self._SourcesQuerySet
 
     def add_endpoint(self, name=None, uri=None):
         if not name or not uri:
