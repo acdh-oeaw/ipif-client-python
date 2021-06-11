@@ -100,6 +100,7 @@ class IPIFType:
         )
         cls._data_cache[id_string] = resp
 
+        # Don't just return the first one here... RECONCILE!
         for endpoint_name, data in resp.items():
             return cls._init_from_id_json(data, endpoint_name=endpoint_name)
 
@@ -291,3 +292,21 @@ class IPIF:
                 results[endpoint_name] = result
 
         return results
+
+    @_error_if_no_endpoints
+    def _base_query_request(
+        self, endpoint_name, ipif_type, search_params, statement_params={}
+    ):
+        URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}/"
+
+        try:
+            resp = requests.get(URL, params=search_params)
+        except requests.exceptions.ConnectionError:
+            return {"IPIF_STATUS": "Request failed"}
+
+        if resp.status_code == 200:
+            # Unlike getting the ID, we actually want to return the
+            # results set, even if empty
+            return resp.json()
+        else:
+            return {"IPIF_STATUS": "Request failed"}

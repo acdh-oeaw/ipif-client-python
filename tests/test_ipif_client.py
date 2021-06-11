@@ -10,6 +10,8 @@ from ipif_client.ipif import (
     IPIFClientQueryError,
 )
 
+from .test_data import TEST_PERSON_SEARCH_RESPONSE
+
 URI = "http://some-ipif-endpoint.com/ipif/"
 
 
@@ -198,3 +200,33 @@ def test_id_functions_raise_error_on_own_class():
 
     with pytest.raises(IPIFClientQueryError):
         ipif.Persons.personId("something")
+
+
+def test_ipif_client_base_query_request(httpserver):
+    httpserver.expect_request("/persons/").respond_with_json(
+        TEST_PERSON_SEARCH_RESPONSE
+    )
+
+    ipif = IPIF()
+    ipif.add_endpoint(name="APIS", uri=httpserver.url_for("/"))
+
+    resp = ipif._base_query_request("APIS", "Persons", {"sourceId": "someSource"})
+    assert resp == TEST_PERSON_SEARCH_RESPONSE
+
+
+"""
+Logic of URI 'hounding'
+=======================
+
+- get some results from all the endpoints...
+- go through results and get IDs that have returned null from 
+
+
+
+
+NB:
+persons and sources are independent of IPIF, so can be equated across endpoints
+factoids/statements can just flat contradict each other
+
+
+"""
