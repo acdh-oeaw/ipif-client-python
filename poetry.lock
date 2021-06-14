@@ -349,6 +349,20 @@ dev = ["autopep8", "coverage", "flake8", "ipdb", "pytest", "pytest-cov", "reno",
 test = ["coverage", "pytest", "pytest-cov", "requests"]
 
 [[package]]
+name = "pytest-mock"
+version = "3.6.1"
+description = "Thin-wrapper around the mock package for easier use with pytest"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+pytest = ">=5.0"
+
+[package.extras]
+dev = ["pre-commit", "tox", "pytest-asyncio"]
+
+[[package]]
 name = "pytest-sugar"
 version = "0.9.4"
 description = "pytest-sugar is a plugin for pytest that changes the default look and feel of pytest (e.g. progressbar, show tests that fail instantly)."
@@ -471,7 +485,7 @@ watchdog = ["watchdog"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "7863e5eddfdc6415b06272461b785e0a5df04c85cfe51af3a2a5adc7fcd0f654"
+content-hash = "d78faf61ba6a1d11eceb8655bc2ff744c2d3b508f888762286423449e119e2e7"
 
 [metadata.files]
 appdirs = [
@@ -601,6 +615,10 @@ pytest = [
 pytest-httpserver = [
     {file = "pytest_httpserver-1.0.0-py3-none-any.whl", hash = "sha256:32cb2befbc519eb2b5907b772809600b470ef83a20e6d78613210debec4b0ba0"},
     {file = "pytest_httpserver-1.0.0.tar.gz", hash = "sha256:ae3095d134d40602e95721140e222139da4a579956123990af85825324d0746d"},
+]
+pytest-mock = [
+    {file = "pytest-mock-3.6.1.tar.gz", hash = "sha256:40217a058c52a63f1042f0784f62009e976ba824c418cced42e88d5f40ab0e62"},
+    {file = "pytest_mock-3.6.1-py3-none-any.whl", hash = "sha256:30c2f2cc9759e76eee674b81ea28c9f0b94f8f0445a1b87762cadf774f0df7e3"},
 ]
 pytest-sugar = [
     {file = "pytest-sugar-0.9.4.tar.gz", hash = "sha256:b1b2186b0a72aada6859bea2a5764145e3aaa2c1cfbb23c3a19b5f7b697563d3"},

@@ -1,6 +1,8 @@
+import time
 from functools import wraps
 from bunch import Bunch
 from dateutil.parser import *
+import math
 import requests
 from typing import Callable, Dict
 
@@ -216,6 +218,9 @@ class IPIF:
         )
 
     def __init__(self, config={}):
+
+        self._DEFAULT_PAGE_REQUEST_SIZE = 30
+
         self._endpoints = {}
 
         # Unpack endpoints from config into instance's endpoint dict
@@ -297,16 +302,62 @@ class IPIF:
     def _base_query_request(
         self, endpoint_name, ipif_type, search_params, statement_params={}
     ):
-        URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}/"
+        URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}"
 
         try:
             resp = requests.get(URL, params=search_params)
+            # print(resp.url)
+            # print(resp.status_code)
         except requests.exceptions.ConnectionError:
-            return {"IPIF_STATUS": "Request failed"}
+            return None
 
         if resp.status_code == 200:
             # Unlike getting the ID, we actually want to return the
             # results set, even if empty
             return resp.json()
         else:
-            return {"IPIF_STATUS": "Request failed"}
+            return None
+
+    @_error_if_no_endpoints
+    def _iterate_results_from_single_endpoint(
+        self, endpoint_name, ipif_type, search_params, statement_params={}
+    ):
+        page = 1
+        size = self._DEFAULT_PAGE_REQUEST_SIZE
+
+        sps = {**search_params, "page": page, "size": size}
+
+        for _ in range(5):
+            first_response = self._base_query_request(endpoint_name, ipif_type, sps)
+            if first_response:
+                yield first_response
+                break
+            timeout_wrapper(1)
+        else:
+            yield {"IPIF_STATUS": "Request failed"}
+            return
+
+        totalHits = first_response["protocol"]["totalHits"]
+        numberPages = math.ceil(totalHits / size)
+
+        for page_num in range(2, numberPages + 1):
+            sps = {**search_params, "page": page_num, "size": size}
+            for _ in range(5):
+                response = self._base_query_request(endpoint_name, ipif_type, sps)
+                if response:
+                    yield response
+                    break
+                timeout_wrapper(1)
+            else:
+                yield {"IPIF_STATUS": f"Request failed on page {page_num}"}
+                return
+
+    @_error_if_no_endpoints
+    def _query_request_from_endpoints(
+        self, ipif_type, search_params, statement_params={}
+    ):
+        pass
+
+
+def timeout_wrapper(t):
+    time.sleep(t)

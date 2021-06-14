@@ -1,5 +1,6 @@
 import pytest
 import requests
+import time
 
 from ipif_client import __version__
 
@@ -203,9 +204,7 @@ def test_id_functions_raise_error_on_own_class():
 
 
 def test_ipif_client_base_query_request(httpserver):
-    httpserver.expect_request("/persons/").respond_with_json(
-        TEST_PERSON_SEARCH_RESPONSE
-    )
+    httpserver.expect_request("/persons").respond_with_json(TEST_PERSON_SEARCH_RESPONSE)
 
     ipif = IPIF()
     ipif.add_endpoint(name="APIS", uri=httpserver.url_for("/"))
@@ -213,6 +212,138 @@ def test_ipif_client_base_query_request(httpserver):
     resp = ipif._base_query_request("APIS", "Persons", {"sourceId": "someSource"})
     assert resp == TEST_PERSON_SEARCH_RESPONSE
 
+
+def fake_iterated_response(totalHits, size, page):
+
+    is_last_page = not (totalHits % (page * size) < totalHits)
+    if is_last_page:
+        return {
+            "protocol": {
+                "size": totalHits % (size),
+                "totalHits": totalHits,
+                "page": page,
+            },
+            "persons": [
+                {"@id": f"ID_{n}"}
+                for n in range(
+                    (page - 1) * size + 1, (page - 1) * size + totalHits % (size) + 1
+                )
+            ],
+        }
+    return {
+        "protocol": {"size": size, "totalHits": totalHits, "page": page},
+        "persons": [
+            {"@id": f"ID_{n}"}
+            for n in range((page - 1) * size + 1, (page - 1) * size + size + 1)
+        ],
+    }
+
+
+def test_fake_iterated_response():
+    assert fake_iterated_response(27, 10, 1) == {
+        "protocol": {"size": 10, "totalHits": 27, "page": 1},
+        "persons": [
+            {"@id": "ID_1"},
+            {"@id": "ID_2"},
+            {"@id": "ID_3"},
+            {"@id": "ID_4"},
+            {"@id": "ID_5"},
+            {"@id": "ID_6"},
+            {"@id": "ID_7"},
+            {"@id": "ID_8"},
+            {"@id": "ID_9"},
+            {"@id": "ID_10"},
+        ],
+    }
+
+    assert fake_iterated_response(27, 10, 2) == {
+        "protocol": {"size": 10, "totalHits": 27, "page": 2},
+        "persons": [
+            {"@id": "ID_11"},
+            {"@id": "ID_12"},
+            {"@id": "ID_13"},
+            {"@id": "ID_14"},
+            {"@id": "ID_15"},
+            {"@id": "ID_16"},
+            {"@id": "ID_17"},
+            {"@id": "ID_18"},
+            {"@id": "ID_19"},
+            {"@id": "ID_20"},
+        ],
+    }
+
+    assert fake_iterated_response(27, 10, 3) == {
+        "protocol": {"size": 7, "totalHits": 27, "page": 3},
+        "persons": [
+            {"@id": "ID_21"},
+            {"@id": "ID_22"},
+            {"@id": "ID_23"},
+            {"@id": "ID_24"},
+            {"@id": "ID_25"},
+            {"@id": "ID_26"},
+            {"@id": "ID_27"},
+        ],
+    }
+
+
+def test_ipif_client_iterate_results_from_single_endpoint(httpserver):
+    responses = [
+        fake_iterated_response(100, 30, 1),
+        fake_iterated_response(100, 30, 2),
+        fake_iterated_response(100, 30, 3),
+        fake_iterated_response(100, 30, 3),
+    ]
+
+    for i in range(4):
+        httpserver.expect_request(
+            "/persons",
+            query_string={"sourceId": "someSourceId", "page": str(i + 1), "size": "30"},
+        ).respond_with_json(responses[i])
+
+    # Sanity
+    assert (
+        requests.get(
+            httpserver.url_for("/persons"),
+            params={"sourceId": "someSourceId", "page": "1", "size": "30"},
+        ).json()
+        == responses[0]
+    )
+
+    ipif = IPIF()
+    ipif.add_endpoint("APIS", uri=httpserver.url_for("/"))
+
+    results_iterator = ipif._iterate_results_from_single_endpoint(
+        "APIS", "Persons", {"sourceId": "someSourceId"}
+    )
+    for i, resp in enumerate(results_iterator):
+        assert resp == responses[i]
+
+
+def no_time_out(t):
+    """Patch timeout_wrapper with a short time for testing"""
+    time.sleep(0.0001)
+
+
+def test_ipif_client_iterate_results_from_single_endpoint_with_error(
+    httpserver, mocker
+):
+    ipif = IPIF()
+    ipif.add_endpoint(name="NONESUCH", uri="http://no")
+
+    results_iterator = ipif._iterate_results_from_single_endpoint(
+        "NONESUCH", "Persons", {"sourceId": "someSourceId"}
+    )
+
+    # Patch timeout_wrapper to avoid waiting a second between retries
+    mocker.patch("ipif_client.ipif.timeout_wrapper", new=no_time_out)
+
+    assert list(results_iterator) == [{"IPIF_STATUS": "Request failed"}]
+
+
+"""
+def test_query_request_from_endpoints(httpserver):
+    httpserver.expect_request()
+"""
 
 """
 Logic of URI 'hounding'
