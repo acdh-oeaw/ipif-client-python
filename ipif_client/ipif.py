@@ -330,7 +330,7 @@ class IPIF:
         for _ in range(5):
             first_response = self._base_query_request(endpoint_name, ipif_type, sps)
             if first_response:
-                yield first_response
+                yield from first_response[ipif_type.lower()]
                 break
             timeout_wrapper(1)
         else:
@@ -345,11 +345,11 @@ class IPIF:
             for _ in range(5):
                 response = self._base_query_request(endpoint_name, ipif_type, sps)
                 if response:
-                    yield response
+                    yield from response[ipif_type.lower()]
                     break
                 timeout_wrapper(1)
             else:
-                yield {"IPIF_STATUS": f"Request failed on page {page_num}"}
+                yield {"IPIF_STATUS": f"Request failed for page {page_num}"}
                 return
 
     @_error_if_no_endpoints

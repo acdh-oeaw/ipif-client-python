@@ -286,6 +286,12 @@ def test_fake_iterated_response():
     }
 
 
+def yield_responses(responses):
+    for r in responses:
+        for p in r["persons"]:
+            yield p
+
+
 def test_ipif_client_iterate_results_from_single_endpoint(httpserver):
     responses = [
         fake_iterated_response(100, 30, 1),
@@ -315,8 +321,10 @@ def test_ipif_client_iterate_results_from_single_endpoint(httpserver):
     results_iterator = ipif._iterate_results_from_single_endpoint(
         "APIS", "Persons", {"sourceId": "someSourceId"}
     )
-    for i, resp in enumerate(results_iterator):
-        assert resp == responses[i]
+
+    # Finally, test that results_iterator produces a list of persons
+    for expected, resp in zip(yield_responses(responses), results_iterator):
+        assert expected == resp
 
 
 def no_time_out(t):
