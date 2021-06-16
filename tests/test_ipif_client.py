@@ -6,12 +6,17 @@ from ipif_client import __version__
 
 from ipif_client.ipif import (
     IPIF,
+    IPIFClientDataError,
     IPIFQuerySet,
     IPIFClientConfigurationError,
     IPIFClientQueryError,
 )
 
-from .test_data import TEST_PERSON_SEARCH_RESPONSE
+from .test_data import (
+    TEST_FACTOID_RESPONSE,
+    TEST_PERSON_SEARCH_RESPONSE,
+    TEST_STATEMENT_RESPONSE,
+)
 
 URI = "http://some-ipif-endpoint.com/ipif/"
 
@@ -157,7 +162,9 @@ def test_doing_id_request_from_ipif_type(httpserver):
 
     ipif.Persons.id("anIdString")
 
-    assert ipif.Persons._ipif_instance._data_cache["anIdString"] == {"TEST": {"@id": "anIdString"}}
+    assert ipif.Persons._ipif_instance._data_cache[("Person", "anIdString")] == {
+        "TEST": {"@id": "anIdString"}
+    }
 
 
 def test_search_queries_return_queryset_of_right_type():
@@ -203,10 +210,150 @@ def test_id_functions_raise_error_on_own_class():
         ipif.Persons.personId("something")
 
 
-def test_id_function_uses_cache_if_possible():
+def test_id_function_uses_cache_if_possible(mocker):
+    ipif = IPIF()
+    ipif.add_endpoint("TEST", uri="http://test")
+
+    requester = mocker.spy(IPIF, "_request_id_from_endpoints")
+
+    ipif._data_cache[("Person", "SomeIdString")] = {"TEST": {"@id": "SomeIdString"}}
+
+    ipif.Persons.id("SomeIdString")
+
+    assert requester.call_count == 0
+
+    ipif.Persons.id("SomethingNotFoundBefore")
+
+    assert requester.call_count == 1
+
+
+def test_id_function_returns_a_factoid_or_statement():
     ipif = IPIF()
 
-    ipif.Persons
+    ipif.add_endpoint("WORKS", "http://works/")
+    ipif.add_endpoint("OTHER", "http://other/")
+    ipif.add_endpoint("FAILS", "http://fails")
+
+    ipif._data_cache[("Factoid", "factoid__39986__original_source_3994")] = {
+        "WORKS": TEST_FACTOID_RESPONSE,
+        "OTHER": None,
+        "FAILS": {"IPIF_STATUS": "Request failed"},
+    }
+
+    f = ipif.Factoids.id("factoid__39986__original_source_3994")
+    assert f
+    assert f.id == "WORKS::factoid__39986__original_source_3994"
+
+    ipif._data_cache[("Statement", "39986_PersonInstitution_95989")] = {
+        "WORKS": TEST_STATEMENT_RESPONSE,
+        "OTHER": None,
+        "FAILS": {"IPIF_STATUS": "Request failed"},
+    }
+
+    st = ipif.Statements.id("39986_PersonInstitution_95989")
+    assert st
+    assert st.id == "WORKS::39986_PersonInstitution_95989"
+
+
+def test_id_function_with_factoid_or_statement_two_matches():
+    ipif = IPIF()
+
+    ipif.add_endpoint("WORKS", "http://works")
+    ipif.add_endpoint("ALSO_WORKS", "http://also_works")
+
+    ipif._data_cache[("Factoid", "factoid__39986__original_source_3994")] = {
+        "WORKS": TEST_FACTOID_RESPONSE,
+        "ALSO_WORKS": TEST_FACTOID_RESPONSE,
+    }
+
+    with pytest.raises(IPIFClientDataError):
+        ipif.Factoids.id("factoid__39986__original_source_3994")
+
+
+def test_simple_reconcile_persons_from_id():
+    ipif = IPIF()
+    ipif._preferred_endpoint = "ENDPOINT_B"
+    ipif.add_endpoint("ENDPOINT_A", "http://a")
+    ipif.add_endpoint("ENDPOINT_B", "http://b")
+
+    PERSON_RESPONSE_A = {
+        "@id": "http://a/39986",
+        "label": "Schneller, István (39986)",
+        "createdBy": "None",
+        "createdWhen": "2016-10-03T20:53:28+00:00Z",
+        "modifiedBy": "None",
+        "modifiedWhen": "2016-10-03T20:53:28+00:00Z",
+        "uris": ["http://d-nb.info/gnd/1031597824"],
+        "factoid-refs": [
+            {
+                "@id": "THE_A_FACTOIDS",
+                "statement-refs": [
+                    {"@id": "AN_A_STATEMENT"},
+                    {"@id": "ANOTHER_A_STATEMENT"},
+                ],
+                "source-ref": {"@id": "THE_A_SOURCE"},
+                "person-ref": {"@id": "39986"},
+            }
+        ],
+    }
+
+    PERSON_RESPONSE_B = {
+        "@id": "some_B_resp",
+        "label": "Schneller, István (39986)",
+        "createdBy": "None",
+        "createdWhen": "2014-10-03T20:53:28+00:00Z",
+        "modifiedBy": "None",
+        "modifiedWhen": "2014-10-03T20:53:28+00:00Z",
+        "uris": ["http://a/39986"],
+        "factoid-refs": [
+            {
+                "@id": "THE_B_FACTOIDS",
+                "statement-refs": [
+                    {"@id": "THE_B_STATEMENT"},
+                    {"@id": "ANOTHER_B_STATEMENT"},
+                ],
+                "source-ref": {"@id": "THE_B_SOURCE"},
+                "person-ref": {"@id": "39986"},
+            }
+        ],
+    }
+
+    p_dict = ipif.Persons._reconcile_persons_from_id(
+        {
+            "ENDPOINT_A": PERSON_RESPONSE_A,
+            "ENDPOINT_B": PERSON_RESPONSE_B,
+        }
+    )
+
+    assert p_dict
+
+    assert p_dict["factoid-refs"] == [
+        {
+            "@id": "THE_B_FACTOIDS",
+            "statement-refs": [
+                {"@id": "THE_B_STATEMENT"},
+                {"@id": "ANOTHER_B_STATEMENT"},
+            ],
+            "source-ref": {"@id": "THE_B_SOURCE"},
+            "person-ref": {"@id": "39986"},
+            "ipif-endpoint": "ENDPOINT_B",
+        },
+        {
+            "@id": "THE_A_FACTOIDS",
+            "statement-refs": [
+                {"@id": "AN_A_STATEMENT"},
+                {"@id": "ANOTHER_A_STATEMENT"},
+            ],
+            "source-ref": {"@id": "THE_A_SOURCE"},
+            "person-ref": {"@id": "39986"},
+            "ipif-endpoint": "ENDPOINT_A",
+        },
+    ]
+
+    # We call set in the function, which potentially throws the order
+    assert set(p_dict["uris"]) == set(
+        ["http://a/39986", "http://d-nb.info/gnd/1031597824"]
+    )
 
 
 def test_ipif_client_base_query_request(httpserver):

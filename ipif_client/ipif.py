@@ -19,6 +19,10 @@ class IPIFClientQueryError(IPIFClientException):
     pass
 
 
+class IPIFClientDataError(IPIFClientException):
+    pass
+
+
 class IPIFQuerySet:
     def __init__(self, search_params=None, *args, **kwargs):
         self._search_params = search_params or {}
@@ -49,7 +53,6 @@ class IPIFQuerySet:
 
 
 class IPIFType:
-    
     def _proxy_to_new_queryset(method_name):
         """Define a method on IPIFType that creates a new QuerySet
         and calls the named method on that QuerySet (returning a new
@@ -95,18 +98,90 @@ class IPIFType:
             return "GO GET FROM SERVER"
 
     @classmethod
+    def _select_start_endpoint_and_dict(cls, resp_dict):
+        """Determine which endpoint and associated data dict to choose
+        from a result dict"""
+        # If we have a preferred endpoint and that one has data,
+        # use that
+        if (
+            cls._ipif_instance._preferred_endpoint
+            and resp_dict.get(cls._ipif_instance._preferred_endpoint)
+            and resp_dict.get(cls._ipif_instance._preferred_endpoint)
+            != {"IPIF_STATUS": "Request failed"}
+        ):
+            start_dict = resp_dict.get(cls._ipif_instance._preferred_endpoint)
+            start_endpoint_name = cls._ipif_instance._preferred_endpoint
+        # Otherwise, just go through in order and pick the first endpoint dict
+        # that has any data
+        else:
+            start_endpoint_name, start_dict = [
+                (e, resp_dict[e])
+                for e in resp_dict
+                if resp_dict[e] and resp_dict[e] != {"IPIF_STATUS": "Request failed"}
+            ][0]
+
+        return start_endpoint_name, start_dict
+
+    @classmethod
+    def _reconcile_persons_from_id(cls, resp_dict):
+        start_endpoint_name, start_dict = cls._select_start_endpoint_and_dict(resp_dict)
+
+        if cls._ipif_instance._hound_mode:
+            alternative_uris_to_try = []
+            for data in resp_dict.values():
+                if data and data != {"IPIF_STATUS": "Request failed"}:
+                    alternative_uris_to_try += data.get("uris", [])
+
+            for endpoint_name, data in resp_dict.items():
+                if not data or data == {"IPIF_STATUS": "Request failed"}:
+                    # get the data
+                    pass
+
+        for factoid in start_dict["factoid-refs"]:
+            factoid["ipif-endpoint"] = start_endpoint_name
+
+        for endpoint_name, data in resp_dict.items():
+            if endpoint_name != start_endpoint_name:
+                for factoid in data["factoid-refs"]:
+                    factoid["ipif-endpoint"] = endpoint_name
+                    start_dict["factoid-refs"].append(factoid)
+                start_dict["uris"] = list(set([*start_dict["uris"], *data["uris"]]))
+
+        return start_dict
+
+    @classmethod
     def id(cls, id_string):
-        resp = cls._ipif_instance._request_id_from_endpoints(
-            cls.__name__.lower() + "s", id_string
-        )
-        cls._ipif_instance._data_cache[id_string] = resp
+        """Gets IPIF entity by @id from all endpoints. Combines Persons and Sources to
+        a single entity."""
+
+        # Check whether it's in the cache already, and return if so
+        if (cls.__name__, id_string) in cls._ipif_instance._data_cache:
+            resp = cls._ipif_instance._data_cache[cls.__name__, id_string]
+        else:
+            resp = cls._ipif_instance._request_id_from_endpoints(
+                cls.__name__.lower() + "s", id_string
+            )
+            cls._ipif_instance._data_cache[(cls.__name__, id_string)] = resp
 
         # Don't just return the first one here... RECONCILE!
         if cls.__name__ in ("Statement", "Factoid"):
-
-            for endpoint_name, data in resp.items():
-                if data and data != {"IPIF_STATUS": "Request failed"}:
-                    return cls._init_from_id_json(data, endpoint_name=endpoint_name)
+            items = [
+                (endpoint_name, data)
+                for endpoint_name, data in resp.items()
+                if data and data != {"IPIF_STATUS": "Request failed"}
+            ]
+            if not items:
+                return None
+            if len(items) == 1:
+                endpoint_name, data = items[0]
+                return cls._init_from_id_json(data, endpoint_name=endpoint_name)
+            if len(items) > 1:
+                raise IPIFClientDataError(
+                    f"More than one {cls.__name__} with id '{id_string}' was found."
+                    "Try selecting from a specific endpoint with [MECHANISM NOT YET INVENTED]"
+                )
+        else:
+            pass
 
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
@@ -220,13 +295,21 @@ class IPIF:
         )
 
     def __init__(self, config={}):
+        """Create a new IPIF client.
 
+        Pass config dict with options:
+        "endpoints": {"name": "SHORT_NAME", "uri": "URI OF ENDPOINT"}
+        """
         self._DEFAULT_PAGE_REQUEST_SIZE = 30
 
         self._endpoints = {}
+        self._preferred_endpoint = None
+        self._hound_mode = True
 
+        # Dict for caching responses. Maybe make this a class so we're not
+        # having to do loads of dict methods on it, and can change the
+        # implememntation
         self._data_cache: Dict = {}
-
 
         # Unpack endpoints from config into instance's endpoint dict
         if "endpoints" in config:
