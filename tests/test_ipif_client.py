@@ -157,7 +157,7 @@ def test_doing_id_request_from_ipif_type(httpserver):
 
     ipif.Persons.id("anIdString")
 
-    assert ipif.Persons._data_cache["anIdString"] == {"TEST": {"@id": "anIdString"}}
+    assert ipif.Persons._ipif_instance._data_cache["anIdString"] == {"TEST": {"@id": "anIdString"}}
 
 
 def test_search_queries_return_queryset_of_right_type():
@@ -201,6 +201,12 @@ def test_id_functions_raise_error_on_own_class():
 
     with pytest.raises(IPIFClientQueryError):
         ipif.Persons.personId("something")
+
+
+def test_id_function_uses_cache_if_possible():
+    ipif = IPIF()
+
+    ipif.Persons
 
 
 def test_ipif_client_base_query_request(httpserver):

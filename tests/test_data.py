@@ -175,3 +175,11 @@ TEST_PERSON_SEARCH_RESPONSE = {
         }
     ],
 }
+
+"""
+How searching should work... 
+
+Need to match:
+- 
+
+"""

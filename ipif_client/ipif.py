@@ -49,8 +49,7 @@ class IPIFQuerySet:
 
 
 class IPIFType:
-    _data_cache: Dict = {}
-
+    
     def _proxy_to_new_queryset(method_name):
         """Define a method on IPIFType that creates a new QuerySet
         and calls the named method on that QuerySet (returning a new
@@ -100,11 +99,14 @@ class IPIFType:
         resp = cls._ipif_instance._request_id_from_endpoints(
             cls.__name__.lower() + "s", id_string
         )
-        cls._data_cache[id_string] = resp
+        cls._ipif_instance._data_cache[id_string] = resp
 
         # Don't just return the first one here... RECONCILE!
-        for endpoint_name, data in resp.items():
-            return cls._init_from_id_json(data, endpoint_name=endpoint_name)
+        if cls.__name__ in ("Statement", "Factoid"):
+
+            for endpoint_name, data in resp.items():
+                if data and data != {"IPIF_STATUS": "Request failed"}:
+                    return cls._init_from_id_json(data, endpoint_name=endpoint_name)
 
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
@@ -222,6 +224,9 @@ class IPIF:
         self._DEFAULT_PAGE_REQUEST_SIZE = 30
 
         self._endpoints = {}
+
+        self._data_cache: Dict = {}
+
 
         # Unpack endpoints from config into instance's endpoint dict
         if "endpoints" in config:
