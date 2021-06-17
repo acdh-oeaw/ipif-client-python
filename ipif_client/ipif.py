@@ -101,6 +101,8 @@ class IPIFType:
     def _select_start_endpoint_and_dict(cls, resp_dict):
         """Determine which endpoint and associated data dict to choose
         from a result dict"""
+        print("========")
+        print(resp_dict)
         # If we have a preferred endpoint and that one has data,
         # use that
         if (
@@ -114,17 +116,23 @@ class IPIFType:
         # Otherwise, just go through in order and pick the first endpoint dict
         # that has any data
         else:
-            start_endpoint_name, start_dict = [
+            possible_dicts = [
                 (e, resp_dict[e])
                 for e in resp_dict
                 if resp_dict[e] and resp_dict[e] != {"IPIF_STATUS": "Request failed"}
-            ][0]
+            ]
+            if possible_dicts:
+                start_endpoint_name, start_dict = possible_dicts[0]
+            else:
+                return None, None
 
         return start_endpoint_name, start_dict
 
     @classmethod
     def _reconcile_persons_from_id(cls, resp_dict):
         start_endpoint_name, start_dict = cls._select_start_endpoint_and_dict(resp_dict)
+        if start_dict is None:
+            return None, None
 
         if cls._ipif_instance._hound_mode:
 
@@ -146,6 +154,7 @@ class IPIFType:
                         if resp and resp != {"IPIF_STATUS": "Request failed"}:
                             resp_dict[endpoint_name] = resp
 
+        print(start_dict)
         for factoid in start_dict["factoid-refs"]:
             factoid["ipif-endpoint"] = start_endpoint_name
 
@@ -156,14 +165,12 @@ class IPIFType:
                     start_dict["factoid-refs"].append(factoid)
                 start_dict["uris"] = list(set([*start_dict["uris"], *data["uris"]]))
 
-        return start_dict
+        return start_endpoint_name, start_dict
 
     @classmethod
     def id(cls, id_string):
         """Gets IPIF entity by @id from all endpoints. Combines Persons and Sources to
         a single entity."""
-
-        # MOVE CACHE --->
 
         resp = cls._ipif_instance._request_id_from_endpoints(
             cls.__name__.lower() + "s", id_string
@@ -187,7 +194,13 @@ class IPIFType:
                     "Try selecting from a specific endpoint with [MECHANISM NOT YET INVENTED]"
                 )
         else:
-            pass
+            endpoint_name, data = cls._reconcile_persons_from_id(resp)
+            if not data:
+                return None
+            return cls._init_from_id_json(
+                data,
+                endpoint_name=endpoint_name,
+            )
 
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):

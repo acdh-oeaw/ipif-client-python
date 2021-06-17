@@ -14,6 +14,7 @@ from ipif_client.ipif import (
 
 from .test_data import (
     TEST_FACTOID_RESPONSE,
+    TEST_PERSON_RESPONSE,
     TEST_PERSON_SEARCH_RESPONSE,
     TEST_STATEMENT_RESPONSE,
 )
@@ -153,18 +154,21 @@ def test_request_id_from_endpoints(httpserver):
 
 
 def test_doing_id_request_from_ipif_type(httpserver):
-    httpserver.expect_request("/persons/anIdString").respond_with_json(
-        {"@id": "anIdString"}
-    )
+    httpserver.expect_request(
+        f"/persons/{TEST_PERSON_RESPONSE['@id']}"
+    ).respond_with_json(TEST_PERSON_RESPONSE)
 
     ipif = IPIF()
     ipif.add_endpoint("TEST", uri=httpserver.url_for("/"))
 
-    ipif.Persons.id("anIdString")
+    ipif.Persons.id(TEST_PERSON_RESPONSE["@id"])
     print(ipif._data_cache)
-    assert ipif.Persons._ipif_instance._data_cache[
-        ("TEST", "persons", "anIdString")
-    ] == {"@id": "anIdString"}
+    assert (
+        ipif.Persons._ipif_instance._data_cache[
+            ("TEST", "persons", TEST_PERSON_RESPONSE["@id"])
+        ]["@id"]
+        == TEST_PERSON_RESPONSE["@id"]
+    )
 
 
 def test_search_queries_return_queryset_of_right_type():
@@ -216,11 +220,11 @@ def test_id_function_uses_cache_if_possible(mocker):
 
     requester = mocker.spy(requests, "get")
 
-    ipif._data_cache[("TEST", "persons", "SomeIdString")] = {
-        "TEST": {"@id": "SomeIdString"}
-    }
+    ipif._data_cache[
+        ("TEST", "persons", TEST_PERSON_RESPONSE["@id"])
+    ] = TEST_PERSON_RESPONSE
 
-    ipif.Persons.id("SomeIdString")
+    ipif.Persons.id(TEST_PERSON_RESPONSE["@id"])
 
     assert requester.call_count == 0
 
@@ -329,7 +333,7 @@ def test_simple_reconcile_persons_from_id():
         ],
     }
 
-    p_dict = ipif.Persons._reconcile_persons_from_id(
+    endpoint_name, p_dict = ipif.Persons._reconcile_persons_from_id(
         {
             "ENDPOINT_A": PERSON_RESPONSE_A,
             "ENDPOINT_B": PERSON_RESPONSE_B,
@@ -421,7 +425,7 @@ def test_reconcile_persons_from_id_with_extra_hounding(mocker):
 
     requester = mocker.spy(IPIF, "_request_single_object_by_id")
 
-    p_dict = ipif.Persons._reconcile_persons_from_id(
+    p_endpoint_name, p_dict = ipif.Persons._reconcile_persons_from_id(
         {"ENDPOINT_A": PERSON_RESPONSE_A, "ENDPOINT_B": None}
     )
 
