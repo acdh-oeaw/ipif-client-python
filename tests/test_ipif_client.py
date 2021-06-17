@@ -161,10 +161,10 @@ def test_doing_id_request_from_ipif_type(httpserver):
     ipif.add_endpoint("TEST", uri=httpserver.url_for("/"))
 
     ipif.Persons.id("anIdString")
-
-    assert ipif.Persons._ipif_instance._data_cache[("Person", "anIdString")] == {
-        "TEST": {"@id": "anIdString"}
-    }
+    print(ipif._data_cache)
+    assert ipif.Persons._ipif_instance._data_cache[
+        ("TEST", "persons", "anIdString")
+    ] == {"@id": "anIdString"}
 
 
 def test_search_queries_return_queryset_of_right_type():
@@ -214,9 +214,11 @@ def test_id_function_uses_cache_if_possible(mocker):
     ipif = IPIF()
     ipif.add_endpoint("TEST", uri="http://test")
 
-    requester = mocker.spy(IPIF, "_request_id_from_endpoints")
+    requester = mocker.spy(requests, "get")
 
-    ipif._data_cache[("Person", "SomeIdString")] = {"TEST": {"@id": "SomeIdString"}}
+    ipif._data_cache[("TEST", "persons", "SomeIdString")] = {
+        "TEST": {"@id": "SomeIdString"}
+    }
 
     ipif.Persons.id("SomeIdString")
 
@@ -234,20 +236,27 @@ def test_id_function_returns_a_factoid_or_statement():
     ipif.add_endpoint("OTHER", "http://other/")
     ipif.add_endpoint("FAILS", "http://fails")
 
-    ipif._data_cache[("Factoid", "factoid__39986__original_source_3994")] = {
-        "WORKS": TEST_FACTOID_RESPONSE,
-        "OTHER": None,
-        "FAILS": {"IPIF_STATUS": "Request failed"},
+    ipif._data_cache[
+        ("WORKS", "factoids", "factoid__39986__original_source_3994")
+    ] = TEST_FACTOID_RESPONSE
+
+    ipif._data_cache[
+        ("OTHER", "factoids", "factoid__39986__original_source_3994")
+    ] = None
+    ipif._data_cache[("FAILS", "factoids", "factoid__39986__original_source_3994")] = {
+        "IPIF_STATUS": "Request failed"
     }
 
     f = ipif.Factoids.id("factoid__39986__original_source_3994")
     assert f
     assert f.id == "WORKS::factoid__39986__original_source_3994"
 
-    ipif._data_cache[("Statement", "39986_PersonInstitution_95989")] = {
-        "WORKS": TEST_STATEMENT_RESPONSE,
-        "OTHER": None,
-        "FAILS": {"IPIF_STATUS": "Request failed"},
+    ipif._data_cache[
+        ("WORKS", "statements", "39986_PersonInstitution_95989")
+    ] = TEST_STATEMENT_RESPONSE
+    ipif._data_cache[("OTHER", "factoids", "39986_PersonInstitution_95989")] = None
+    ipif._data_cache[("FAILS", "factoids", "39986_PersonInstitution_95989")] = {
+        "IPIF_STATUS": "Request failed"
     }
 
     st = ipif.Statements.id("39986_PersonInstitution_95989")
@@ -261,10 +270,12 @@ def test_id_function_with_factoid_or_statement_two_matches():
     ipif.add_endpoint("WORKS", "http://works")
     ipif.add_endpoint("ALSO_WORKS", "http://also_works")
 
-    ipif._data_cache[("Factoid", "factoid__39986__original_source_3994")] = {
-        "WORKS": TEST_FACTOID_RESPONSE,
-        "ALSO_WORKS": TEST_FACTOID_RESPONSE,
-    }
+    ipif._data_cache[
+        ("WORKS", "factoids", "factoid__39986__original_source_3994")
+    ] = TEST_FACTOID_RESPONSE
+    ipif._data_cache[
+        ("ALSO_WORKS", "factoids", "factoid__39986__original_source_3994")
+    ] = TEST_FACTOID_RESPONSE
 
     with pytest.raises(IPIFClientDataError):
         ipif.Factoids.id("factoid__39986__original_source_3994")
@@ -356,7 +367,7 @@ def test_simple_reconcile_persons_from_id():
     )
 
 
-def test_reconcile_persons_from_id_with_extra_hounding(cls, resp_dict):
+def test_reconcile_persons_from_id_with_extra_hounding():
     pass
     # ok, chuck one thing into the cache and then look up the other from
     # a server?? NO... fix the cache to operate on a by-req level.

@@ -164,14 +164,11 @@ class IPIFType:
         """Gets IPIF entity by @id from all endpoints. Combines Persons and Sources to
         a single entity."""
 
-        # Check whether it's in the cache already, and return if so
-        if (cls.__name__, id_string) in cls._ipif_instance._data_cache:
-            resp = cls._ipif_instance._data_cache[cls.__name__, id_string]
-        else:
-            resp = cls._ipif_instance._request_id_from_endpoints(
-                cls.__name__.lower() + "s", id_string
-            )
-            cls._ipif_instance._data_cache[(cls.__name__, id_string)] = resp
+        # MOVE CACHE --->
+
+        resp = cls._ipif_instance._request_id_from_endpoints(
+            cls.__name__.lower() + "s", id_string
+        )
 
         # Don't just return the first one here... RECONCILE!
         if cls.__name__ in ("Statement", "Factoid"):
@@ -369,19 +366,38 @@ class IPIF:
 
     @_error_if_no_endpoints
     def _request_single_object_by_id(self, endpoint_name, ipif_type, id_string):
+        if (
+            endpoint_name,
+            ipif_type,
+            id_string,
+        ) in self._data_cache and self._data_cache[
+            (endpoint_name, ipif_type, id_string)
+        ] != {
+            "IPIF_STATUS": "Request failed"
+        }:
+            return self._data_cache[(endpoint_name, ipif_type, id_string)]
 
         URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}/{id_string}"
         print(f"Getting {URL}...")
         try:
             resp = requests.get(URL)
         except requests.exceptions.ConnectionError:
+            self._data_cache[(endpoint_name, ipif_type, id_string)] = {
+                "IPIF_STATUS": "Request failed"
+            }
             return {"IPIF_STATUS": "Request failed"}
 
         if resp.status_code == 200:
-            return resp.json()
+            data = resp.json()
+            self._data_cache[(endpoint_name, ipif_type, id_string)] = data
+            return data
         elif resp.status_code == 404:
+            self._data_cache[(endpoint_name, ipif_type, id_string)] = None
             return None
         else:
+            self._data_cache[(endpoint_name, ipif_type, id_string)] = {
+                "IPIF_STATUS": "Request failed"
+            }
             return {"IPIF_STATUS": "Request failed"}
 
     @_error_if_no_endpoints
