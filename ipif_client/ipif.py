@@ -127,6 +127,9 @@ class IPIFType:
         start_endpoint_name, start_dict = cls._select_start_endpoint_and_dict(resp_dict)
 
         if cls._ipif_instance._hound_mode:
+            # Here, we get a list of all the other URIs available for this entity
+            # and try endpoints that have returned None (or failed... again; why not?)
+            # to see if we have any luck with this alternative URI
             alternative_uris_to_try = []
             for data in resp_dict.values():
                 if data and data != {"IPIF_STATUS": "Request failed"}:
@@ -135,7 +138,14 @@ class IPIFType:
             for endpoint_name, data in resp_dict.items():
                 if not data or data == {"IPIF_STATUS": "Request failed"}:
                     # get the data
-                    pass
+
+                    # endpoint_name, ipif_type, id_string
+                    for uri in alternative_uris_to_try:
+                        resp = cls._ipif_instance._request_single_object_by_id(
+                            endpoint_name, cls.__name__.lower() + "s", uri
+                        )
+                        if resp and resp != {"IPIF_STATUS": "Request failed"}:
+                            resp_dict[endpoint_name] = resp
 
         for factoid in start_dict["factoid-refs"]:
             factoid["ipif-endpoint"] = start_endpoint_name

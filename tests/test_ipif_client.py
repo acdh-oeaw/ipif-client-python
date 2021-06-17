@@ -356,6 +356,13 @@ def test_simple_reconcile_persons_from_id():
     )
 
 
+def test_reconcile_persons_from_id_with_extra_hounding(cls, resp_dict):
+    pass
+    # ok, chuck one thing into the cache and then look up the other from
+    # a server?? NO... fix the cache to operate on a by-req level.
+    # i.e. DO THA CACHE PROPERLY
+
+
 def test_ipif_client_base_query_request(httpserver):
     httpserver.expect_request("/persons").respond_with_json(TEST_PERSON_SEARCH_RESPONSE)
 
