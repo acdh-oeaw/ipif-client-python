@@ -137,11 +137,15 @@ def test_create_factoid_from_factoid_ref_json():
     assert isinstance(f.source, ipif.Sources)
 
 
-"""
-def test_thing():
+def test_ipif_type_gets_full_item_when_accessed():
     ipif = IPIF()
 
-    p = ipif.Persons._init_from_id_json({"@id": "something"})
+    ipif.add_endpoint("TEST", "http://test")
 
-    assert p.label == "GO GET FROM SERVER"
-"""
+    ipif._data_cache[
+        ("TEST", "factoids", TEST_FACTOID_RESPONSE["@id"])
+    ] = TEST_FACTOID_RESPONSE
+
+    # 39986_PersonInstitution_95989 is the ID of TEST_STATEMENT_RESPONSE
+
+    f = ipif.Factoids.id(TEST_FACTOID_RESPONSE["@id"])

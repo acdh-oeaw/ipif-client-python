@@ -101,8 +101,7 @@ class IPIFType:
     def _select_start_endpoint_and_dict(cls, resp_dict):
         """Determine which endpoint and associated data dict to choose
         from a result dict"""
-        print("========")
-        print(resp_dict)
+
         # If we have a preferred endpoint and that one has data,
         # use that
         if (
