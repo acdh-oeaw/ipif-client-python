@@ -367,8 +367,66 @@ def test_simple_reconcile_persons_from_id():
     )
 
 
-def test_reconcile_persons_from_id_with_extra_hounding():
-    pass
+def test_reconcile_persons_from_id_with_extra_hounding(mocker):
+    ipif = IPIF()
+    ipif._preferred_endpoint = "ENDPOINT_A"
+    ipif.add_endpoint("ENDPOINT_A", "http://a")
+    ipif.add_endpoint("ENDPOINT_B", "http://b")
+
+    PERSON_RESPONSE_A = {
+        "@id": "http://a/39986",
+        "label": "Schneller, István (39986)",
+        "createdBy": "None",
+        "createdWhen": "2016-10-03T20:53:28+00:00Z",
+        "modifiedBy": "None",
+        "modifiedWhen": "2016-10-03T20:53:28+00:00Z",
+        "uris": ["http://d-nb.info/gnd/1031597824"],
+        "factoid-refs": [
+            {
+                "@id": "THE_A_FACTOIDS",
+                "statement-refs": [
+                    {"@id": "AN_A_STATEMENT"},
+                    {"@id": "ANOTHER_A_STATEMENT"},
+                ],
+                "source-ref": {"@id": "THE_A_SOURCE"},
+                "person-ref": {"@id": "39986"},
+            }
+        ],
+    }
+
+    PERSON_RESPONSE_B = {
+        "@id": "http://d-nb.info/gnd/1031597824",
+        "label": "Schneller, István (39986)",
+        "createdBy": "None",
+        "createdWhen": "2014-10-03T20:53:28+00:00Z",
+        "modifiedBy": "None",
+        "modifiedWhen": "2014-10-03T20:53:28+00:00Z",
+        "uris": ["http://a/39986"],
+        "factoid-refs": [
+            {
+                "@id": "THE_B_FACTOIDS",
+                "statement-refs": [
+                    {"@id": "THE_B_STATEMENT"},
+                    {"@id": "ANOTHER_B_STATEMENT"},
+                ],
+                "source-ref": {"@id": "THE_B_SOURCE"},
+                "person-ref": {"@id": "39986"},
+            }
+        ],
+    }
+
+    ipif._data_cache[
+        ("ENDPOINT_B", "persons", "http://d-nb.info/gnd/1031597824")
+    ] = PERSON_RESPONSE_B
+
+    requester = mocker.spy(IPIF, "_request_single_object_by_id")
+
+    p_dict = ipif.Persons._reconcile_persons_from_id(
+        {"ENDPOINT_A": PERSON_RESPONSE_A, "ENDPOINT_B": None}
+    )
+
+    assert requester.call_count == 1
+
     # ok, chuck one thing into the cache and then look up the other from
     # a server?? NO... fix the cache to operate on a by-req level.
     # i.e. DO THA CACHE PROPERLY
