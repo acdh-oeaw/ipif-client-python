@@ -427,9 +427,29 @@ def test_reconcile_persons_from_id_with_extra_hounding(mocker):
 
     assert requester.call_count == 1
 
-    # ok, chuck one thing into the cache and then look up the other from
-    # a server?? NO... fix the cache to operate on a by-req level.
-    # i.e. DO THA CACHE PROPERLY
+    assert len(p_dict["factoid-refs"]) == 2
+    assert p_dict["factoid-refs"] == [
+        {
+            "@id": "THE_A_FACTOIDS",
+            "statement-refs": [
+                {"@id": "AN_A_STATEMENT"},
+                {"@id": "ANOTHER_A_STATEMENT"},
+            ],
+            "source-ref": {"@id": "THE_A_SOURCE"},
+            "person-ref": {"@id": "39986"},
+            "ipif-endpoint": "ENDPOINT_A",
+        },
+        {
+            "@id": "THE_B_FACTOIDS",
+            "statement-refs": [
+                {"@id": "THE_B_STATEMENT"},
+                {"@id": "ANOTHER_B_STATEMENT"},
+            ],
+            "source-ref": {"@id": "THE_B_SOURCE"},
+            "person-ref": {"@id": "39986"},
+            "ipif-endpoint": "ENDPOINT_B",
+        },
+    ]
 
 
 def test_ipif_client_base_query_request(httpserver):
