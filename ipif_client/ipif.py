@@ -1,10 +1,30 @@
 import time
 from functools import wraps
+
 from bunch import Bunch
 from dateutil.parser import *
 import math
 import requests
 from typing import Callable, Dict
+
+
+class Bunch(Bunch):
+    def __init__(self, varname, *args, **kwargs):
+        self.__var_name = varname
+        super().__init__(*args, **kwargs)
+
+    def __repr__(self):
+        keys = self.keys()
+        print(keys)
+        # keys.sort()
+        args = ", ".join(
+            [
+                "%s=%r" % (key, self[key])
+                for key in keys
+                if not key.startswith("_Bunch__")
+            ]
+        )
+        return "%s: %s" % (self.__var_name, args)
 
 
 class IPIFClientException(Exception):
@@ -194,14 +214,45 @@ class IPIFType:
                 endpoint_name=endpoint_name,
             )
 
+    def __getattr__(self, name):
+        """If an IPIFType is a -ref, i.e. not full data,
+        and user attempts to get an attribute.
+
+
+        REMEMBER: anything that even hits this function does
+        so because it *does not exist*"""
+
+        print("------")
+        print(">>calling with ", name)
+
+        if name == "label":
+            return self.id
+
+        if self._ref_only:
+            # Get from server
+            new = self.get_by_id(self.id)
+            if new:
+                return_value = getattr(new, name)
+                self.__dict__.update(new.__dict__)
+
+                if return_value:
+                    return return_value
+
+                else:
+                    raise AttributeError
+            else:
+                raise AttributeError
+        raise AttributeError
+
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
         # print(r)
         o = cls()
+        o._ref_only = False  # if full object, not just ref_only
+
         o.get_by_id = cls.id
         o.id = f"{endpoint_name}::{r['@id']}"
 
-        o._ref_only = False
         o.local_id = r["@id"]
         o.label = r.get("label", None)
         o.uris = r.get("uris", [])
@@ -228,9 +279,11 @@ class IPIFType:
     @classmethod
     def _init_from_ref_json(cls, r):
         o = cls()
+        o._ref_only = True  # Initted as X-ref only
+
         o.get_by_id = cls.id
         o.id = r["@id"]
-        o._ref_only = False
+
         return o
 
 
@@ -270,17 +323,18 @@ class IPIFSources(IPIFType):
 class IPIFStatements(IPIFType):
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
+        print(r)
         o = super()._init_from_id_json(r, endpoint_name=endpoint_name)
-        o.statementType = Bunch(r.get("statementType", {})) or None
-        o.name = r.get("name", None)
-        o.memberOf = Bunch(r.get("memberOf", {})) or None
-        o.role = Bunch(r.get("role", {})) or None
-        o.date = Bunch(r.get("date", {})) or None
-        o.date.sortdate = parse(o.date.sortdate).replace(tzinfo=None)
+        o.statementType = Bunch("StatementType", r.get("statementType", {})) or None
+        o.name = r.get("Name", None)
+        o.memberOf = Bunch("MemberOf", r.get("memberOf", {})) or None
+        o.role = Bunch("Role", r.get("role", {})) or None
+        o.date = Bunch("Date", r.get("date", {})) or Bunch(sortdate={})
+        # o.date.sortdate = parse(o.date.sortdate).replace(tzinfo=None)
         o.statementText = r.get("statementText", None)
 
-        o.places = [Bunch(p) for p in r.get("places", [])]
-        o.relatesToPersons = [Bunch(p) for p in r.get("relatesToPersons", [])]
+        o.places = [Bunch("Place", p) for p in r.get("places", [])]
+        o.relatesToPersons = [Bunch("Person", p) for p in r.get("relatesToPersons", [])]
 
         return o
 

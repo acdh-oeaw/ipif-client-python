@@ -161,6 +161,80 @@ def test_ipif_type_gets_full_item_when_accessed():
 
     assert st._ref_only == True
 
-    # assert st.name == "Lebowski, Lebowski"
+    assert st.name == "Lebowski, Lebowski"
 
-    # assert st._ref_only == False
+    assert st._ref_only == False
+
+
+{
+    "@id": "27527_PersonEvent_141805",
+    "statementType": {"label": "relatedToEvent"},
+    "role": {"label": "stellte aus"},
+    "date": {"label": ["None"]},
+    "statementText": "Tangl, Karlmann (stellte aus) Ordered Pizza",
+    "createdBy": "rhadden",
+    "createdWhen": "2021-01-13T10:47:20.853031+00:00Z",
+    "modifiedBy": "rhadden",
+    "modifiedWhen": "2021-01-13T10:47:20.853031+00:00Z",
+    "factoid-refs": [
+        {
+            "@id": "factoid__27527__original_source_594",
+            "source-ref": {"@id": "original_source_594"},
+            "person-ref": {"@id": 27527},
+            "statement-refs": [
+                {"@id": "27527_PersonEvent_141805"},
+                {"@id": "27527_PersonInstitution_96043"},
+                {"@id": "27527_PersonInstitution_96047"},
+                {"@id": "27527_PersonInstitution_96054"},
+                {"@id": "27527_PersonInstitution_96060"},
+                {"@id": "27527_PersonInstitution_96064"},
+                {"@id": "27527_PersonInstitution_96065"},
+                {"@id": "27527_PersonInstitution_96066"},
+                {"@id": "27527_PersonInstitution_96068"},
+                {"@id": "27527_PersonInstitution_96069"},
+                {"@id": "27527_PersonInstitution_96071"},
+                {"@id": "27527_PersonInstitution_96072"},
+                {"@id": "27527_PersonInstitution_96073"},
+                {"@id": "27527_PersonInstitution_96074"},
+                {"@id": "27527_PersonInstitution_96076"},
+                {"@id": "27527_PersonInstitution_96079"},
+                {"@id": "27527_PersonInstitution_96080"},
+                {"@id": "27527_PersonInstitution_96081"},
+                {"@id": "27527_PersonInstitution_96087"},
+                {"@id": "27527_PersonInstitution_96091"},
+                {"@id": "27527_PersonInstitution_96097"},
+                {"@id": "27527_PersonInstitution_96099"},
+                {"@id": "27527_PersonInstitution_96100"},
+                {"@id": "27527_PersonInstitution_96101"},
+                {"@id": "27527_PersonInstitution_96102"},
+                {"@id": "27527_PersonInstitution_141788"},
+                {"@id": "27527_PersonPlace_27528"},
+                {"@id": "27527_PersonPlace_27529"},
+                {"@id": "27527_PersonPlace_96032"},
+                {"@id": "27527_PersonPlace_96044"},
+                {"@id": "27527_PersonPlace_96050"},
+                {"@id": "27527_PersonPlace_96051"},
+                {"@id": "27527_PersonPlace_96055"},
+                {"@id": "27527_PersonPlace_96056"},
+                {"@id": "27527_PersonPlace_96061"},
+                {"@id": "27527_PersonPlace_96067"},
+                {"@id": "27527_PersonPlace_96070"},
+                {"@id": "27527_PersonPlace_96075"},
+                {"@id": "27527_PersonPlace_96083"},
+                {"@id": "27527_PersonPlace_96084"},
+                {"@id": "27527_PersonPlace_141642"},
+                {"@id": "27527_PersonPlace_141779"},
+                {"@id": "27527__PersonPerson_5411__96031"},
+                {"@id": "27527__PersonPerson_5742__141801"},
+                {"@id": "27527_attrb_name"},
+                {"@id": "27527_attrb_start_date"},
+                {"@id": "27527_attrb_end_date"},
+                {"@id": "27527_attrb_first_name"},
+                {"@id": "27527_attrb_gender"},
+                {"@id": "27527_m2m_profession_149"},
+                {"@id": "27527_m2m_profession_188"},
+                {"@id": "27527_m2m_profession_713"},
+            ],
+        }
+    ],
+}
