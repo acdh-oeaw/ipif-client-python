@@ -140,12 +140,27 @@ def test_create_factoid_from_factoid_ref_json():
 def test_ipif_type_gets_full_item_when_accessed():
     ipif = IPIF()
 
-    ipif.add_endpoint("TEST", "http://test")
+    ipif.add_endpoint("TEST", "http://test/")
 
     ipif._data_cache[
         ("TEST", "factoids", TEST_FACTOID_RESPONSE["@id"])
     ] = TEST_FACTOID_RESPONSE
 
+    ipif._data_cache[
+        ("TEST", "statements", "39986_PersonInstitution_95989")
+    ] = TEST_STATEMENT_RESPONSE
     # 39986_PersonInstitution_95989 is the ID of TEST_STATEMENT_RESPONSE
 
     f = ipif.Factoids.id(TEST_FACTOID_RESPONSE["@id"])
+
+    assert f.id == "TEST::factoid__39986__original_source_3994"
+
+    assert f.statements[0].id == "39986_PersonInstitution_95989"
+
+    st = f.statements[0]
+
+    assert st._ref_only == True
+
+    # assert st.name == "Lebowski, Lebowski"
+
+    # assert st._ref_only == False

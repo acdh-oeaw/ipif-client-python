@@ -53,6 +53,8 @@ class IPIFQuerySet:
 
 
 class IPIFType:
+    _ref_only = False
+
     def _proxy_to_new_queryset(method_name):
         """Define a method on IPIFType that creates a new QuerySet
         and calls the named method on that QuerySet (returning a new
@@ -87,15 +89,6 @@ class IPIFType:
 
     def __getitem__(self, name):
         return self._data_dict.get(name)
-
-    def __getattribute__(self, name):
-        # Don't do it like this!!!
-        # Use a 'is_only_ref' flag... then grab the real object
-        # and swap them out!!
-        if object.__getattribute__(self, name):
-            return object.__getattribute__(self, name)
-        else:
-            return "GO GET FROM SERVER"
 
     @classmethod
     def _select_start_endpoint_and_dict(cls, resp_dict):
@@ -153,7 +146,7 @@ class IPIFType:
                         if resp and resp != {"IPIF_STATUS": "Request failed"}:
                             resp_dict[endpoint_name] = resp
 
-        print(start_dict)
+        # print(start_dict)
         for factoid in start_dict["factoid-refs"]:
             factoid["ipif-endpoint"] = start_endpoint_name
 
@@ -205,7 +198,10 @@ class IPIFType:
     def _init_from_id_json(cls, r, endpoint_name):
         # print(r)
         o = cls()
+        o.get_by_id = cls.id
         o.id = f"{endpoint_name}::{r['@id']}"
+
+        o._ref_only = False
         o.local_id = r["@id"]
         o.label = r.get("label", None)
         o.uris = r.get("uris", [])
@@ -232,7 +228,9 @@ class IPIFType:
     @classmethod
     def _init_from_ref_json(cls, r):
         o = cls()
+        o.get_by_id = cls.id
         o.id = r["@id"]
+        o._ref_only = False
         return o
 
 
