@@ -10,6 +10,8 @@ requests = "^2.25.1"
 pytest-httpserver = "^1.0.0"
 bunch = "^1.0.1"
 python-dateutil = "^2.8.1"
+yaspin = "^2.0.0"
+munch = "^2.5.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

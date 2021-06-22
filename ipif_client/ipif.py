@@ -1,11 +1,14 @@
 import time
 from functools import wraps
 
-from bunch import Bunch
+from munch import Munch as Bunch
 from dateutil.parser import *
 import math
 import requests
 from typing import Callable, Dict
+
+from yaspin import yaspin
+from yaspin.spinners import Spinners
 
 
 class Bunch(Bunch):
@@ -15,7 +18,7 @@ class Bunch(Bunch):
 
     def __repr__(self):
         keys = self.keys()
-        print(keys)
+
         # keys.sort()
         args = ", ".join(
             [
@@ -40,6 +43,10 @@ class IPIFClientQueryError(IPIFClientException):
 
 
 class IPIFClientDataError(IPIFClientException):
+    pass
+
+
+class Statements(list):
     pass
 
 
@@ -171,7 +178,7 @@ class IPIFType:
             factoid["ipif-endpoint"] = start_endpoint_name
 
         for endpoint_name, data in resp_dict.items():
-            if endpoint_name != start_endpoint_name:
+            if data.get("factoid-refs", None) and endpoint_name != start_endpoint_name:
                 for factoid in data["factoid-refs"]:
                     factoid["ipif-endpoint"] = endpoint_name
                     start_dict["factoid-refs"].append(factoid)
@@ -222,15 +229,16 @@ class IPIFType:
         REMEMBER: anything that even hits this function does
         so because it *does not exist*"""
 
-        print("------")
-        print(">>calling with ", name)
-
         if name == "label":
             return self.id
+        if name.startswith("_"):
+            return
 
         if self._ref_only:
+            print(f"about to get {name} from server")
             # Get from server
             new = self.get_by_id(self.id)
+
             if new:
                 return_value = getattr(new, name)
                 self.__dict__.update(new.__dict__)
@@ -246,7 +254,7 @@ class IPIFType:
 
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
-        # print(r)
+        print(r)
         o = cls()
         o._ref_only = False  # if full object, not just ref_only
 
@@ -323,19 +331,24 @@ class IPIFSources(IPIFType):
 class IPIFStatements(IPIFType):
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
-        print(r)
+        # print(r)
         o = super()._init_from_id_json(r, endpoint_name=endpoint_name)
         o.statementType = Bunch("StatementType", r.get("statementType", {})) or None
-        o.name = r.get("Name", None)
+        o.name = r.get("name", None)
         o.memberOf = Bunch("MemberOf", r.get("memberOf", {})) or None
         o.role = Bunch("Role", r.get("role", {})) or None
-        o.date = Bunch("Date", r.get("date", {})) or Bunch(sortdate={})
-        # o.date.sortdate = parse(o.date.sortdate).replace(tzinfo=None)
+
+        date = r.get("date", {})
+        sortdate = date.get("sortdate", None)
+        parsed_sortdate = parse(sortdate).replace(tzinfo=None) if sortdate else None
+        date_label = date.get("label")
+
+        o.date = Bunch("Date", {"sortdate": parsed_sortdate, "label": date_label})
+
         o.statementText = r.get("statementText", None)
 
         o.places = [Bunch("Place", p) for p in r.get("places", [])]
         o.relatesToPersons = [Bunch("Person", p) for p in r.get("relatesToPersons", [])]
-
         return o
 
 
@@ -441,7 +454,7 @@ class IPIF:
             return self._data_cache[(endpoint_name, ipif_type, id_string)]
 
         URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}/{id_string}"
-        print(f"Getting {URL}...")
+        # print(f"Getting {URL}...")
         try:
             resp = requests.get(URL)
         except requests.exceptions.ConnectionError:
@@ -466,12 +479,20 @@ class IPIF:
     @_error_if_no_endpoints
     def _request_id_from_endpoints(self, ipif_type, id_string):
         results = {}
-        for endpoint_name in self._endpoints:
-            result = self._request_single_object_by_id(
-                endpoint_name, ipif_type, id_string
-            )
-            if result:
-                results[endpoint_name] = result
+        with yaspin(Spinners.arc, color="magenta", timer=True, text="Loading...") as sp:
+            for endpoint_name in self._endpoints:
+                sp.text = f"Getting {ipif_type} @id='{id_string}' from {endpoint_name}"
+
+                result = self._request_single_object_by_id(
+                    endpoint_name, ipif_type, id_string
+                )
+                if result:
+                    results[endpoint_name] = result
+
+                if result and result != {"IPIF_STATUS": "Request failed"}:
+                    sp.ok("✅ ")
+                else:
+                    sp.fail("💥 ")
 
         return results
 
