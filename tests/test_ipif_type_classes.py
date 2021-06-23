@@ -1,5 +1,5 @@
 import datetime
-from ipif_client.ipif import IPIF
+from ipif_client.ipif import IPIF, Statements
 
 from .test_data import (
     TEST_PERSON_RESPONSE,

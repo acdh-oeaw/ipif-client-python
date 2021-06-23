@@ -47,7 +47,16 @@ class IPIFClientDataError(IPIFClientException):
 
 
 class Statements(list):
-    pass
+    def has_property(self, property):
+        items = []
+        for item in self:
+            try:
+                if getattr(item, property):
+                    items.append(item)
+            except AttributeError:
+                pass
+
+        return __class__(items)
 
 
 class IPIFQuerySet:
@@ -106,7 +115,7 @@ class IPIFType:
     p = _proxy_to_new_queryset("p")
 
     def __str__(self):
-        if hasattr(self, "label"):
+        if getattr(self, "label", None):
             return f"{self.__class__.__name__}: {self.label}"
         else:
             return f"{self.__class__.__name__}: {self.id}"
@@ -235,7 +244,7 @@ class IPIFType:
             return
 
         if self._ref_only:
-            print(f"about to get {name} from server")
+            # print(f"about to get {name} from server")
             # Get from server
             new = self.get_by_id(self.id)
 
@@ -254,7 +263,7 @@ class IPIFType:
 
     @classmethod
     def _init_from_id_json(cls, r, endpoint_name):
-        print(r)
+        # print(r)
         o = cls()
         o._ref_only = False  # if full object, not just ref_only
 
@@ -301,10 +310,12 @@ class IPIFFactoids(IPIFType):
         o = super()._init_from_id_json(r, endpoint_name=endpoint_name)
         o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
         o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
-        o.statements = [
-            cls._ipif_instance.Statements._init_from_ref_json(st_json)
-            for st_json in r.get("statement-refs", [])
-        ]
+        o.statements = Statements(
+            (
+                cls._ipif_instance.Statements._init_from_ref_json(st_json)
+                for st_json in r.get("statement-refs", [])
+            )
+        )
         return o
 
     @classmethod
@@ -313,10 +324,12 @@ class IPIFFactoids(IPIFType):
         o.id = r["@id"]
         o.source = cls._ipif_instance.Sources._init_from_ref_json(r.get("source-ref"))
         o.person = cls._ipif_instance.Persons._init_from_ref_json(r.get("person-ref"))
-        o.statements = [
-            cls._ipif_instance.Statements._init_from_ref_json(st_json)
-            for st_json in r.get("statement-refs", [])
-        ]
+        o.statements = Statements(
+            (
+                cls._ipif_instance.Statements._init_from_ref_json(st_json)
+                for st_json in r.get("statement-refs", [])
+            )
+        )
         return o
 
 
@@ -457,6 +470,7 @@ class IPIF:
         # print(f"Getting {URL}...")
         try:
             resp = requests.get(URL)
+
         except requests.exceptions.ConnectionError:
             self._data_cache[(endpoint_name, ipif_type, id_string)] = {
                 "IPIF_STATUS": "Request failed"
@@ -479,7 +493,7 @@ class IPIF:
     @_error_if_no_endpoints
     def _request_id_from_endpoints(self, ipif_type, id_string):
         results = {}
-        with yaspin(Spinners.arc, color="magenta", timer=True, text="Loading...") as sp:
+        with yaspin(Spinners.earth, color="magenta", timer=True) as sp:
             for endpoint_name in self._endpoints:
                 sp.text = f"Getting {ipif_type} @id='{id_string}' from {endpoint_name}"
 
@@ -491,8 +505,10 @@ class IPIF:
 
                 if result and result != {"IPIF_STATUS": "Request failed"}:
                     sp.ok("✅ ")
+                    pass
                 else:
                     sp.fail("💥 ")
+                    pass
 
         return results
 
@@ -503,6 +519,7 @@ class IPIF:
         URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}"
 
         try:
+
             resp = requests.get(URL, params=search_params)
             # print(resp.url)
             # print(resp.status_code)
