@@ -171,36 +171,6 @@ def test_doing_id_request_from_ipif_type(httpserver):
     )
 
 
-def test_search_queries_return_queryset_of_right_type():
-    ipif = IPIF()
-
-    qs = ipif.Persons.factoidId("someFactoidId")
-
-    assert isinstance(qs, IPIFQuerySet)
-    assert isinstance(qs, ipif._PersonsQuerySet)
-    assert qs.__class__.__name__ == "PersonsQuerySet"
-
-
-def test_queryset_methods_return_queryset():
-    ipif = IPIF()
-
-    qs = ipif._PersonsQuerySet()
-
-    assert isinstance(qs, ipif._PersonsQuerySet)
-
-    qs2 = qs.factoidId("someFactoidId")
-
-    assert isinstance(qs, ipif._PersonsQuerySet)
-
-    assert qs2._search_params == {"factoidId": "someFactoidId"}
-
-    qs3 = qs2.f("someFactoidSearchTerm")
-    assert qs3._search_params == {
-        "factoidId": "someFactoidId",
-        "f": "someFactoidSearchTerm",
-    }
-
-
 def test_id_functions_raise_error_on_own_class():
     ipif = IPIF()
 
@@ -601,24 +571,31 @@ def test_ipif_client_iterate_results_from_single_endpoint_with_error(
     assert list(results_iterator) == [{"IPIF_STATUS": "Request failed"}]
 
 
-"""
-def test_query_request_from_endpoints(httpserver):
-    httpserver.expect_request()
-"""
+def test_search_queries_return_queryset_of_right_type():
+    ipif = IPIF()
 
-"""
-Logic of URI 'hounding'
-=======================
+    qs = ipif.Persons.factoidId("someFactoidId")
 
-- get some results from all the endpoints...
-- go through results and get IDs that have returned null from 
+    assert isinstance(qs, IPIFQuerySet)
+    assert isinstance(qs, ipif._PersonsQuerySet)
+    assert qs.__class__.__name__ == "PersonsQuerySet"
 
 
+def test_queryset_methods_return_queryset():
+    ipif = IPIF()
 
+    qs = ipif._PersonsQuerySet()
 
-NB:
-persons and sources are independent of IPIF, so can be equated across endpoints
-factoids/statements can just flat contradict each other
+    assert isinstance(qs, ipif._PersonsQuerySet)
 
+    qs2 = qs.factoidId("someFactoidId")
 
-"""
+    assert isinstance(qs, ipif._PersonsQuerySet)
+
+    assert qs2._search_params == {"factoidId": "someFactoidId"}
+
+    qs3 = qs2.f("someFactoidSearchTerm")
+    assert qs3._search_params == {
+        "factoidId": "someFactoidId",
+        "f": "someFactoidSearchTerm",
+    }
