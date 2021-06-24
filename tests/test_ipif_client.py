@@ -599,3 +599,99 @@ def test_queryset_methods_return_queryset():
         "factoidId": "someFactoidId",
         "f": "someFactoidSearchTerm",
     }
+
+
+def test_query_requests_from_endpoints(httpserver):
+    responses = [
+        fake_iterated_response(100, 30, 1),
+        fake_iterated_response(100, 30, 2),
+        fake_iterated_response(100, 30, 3),
+        fake_iterated_response(100, 30, 3),
+    ]
+
+    for i in range(4):
+        httpserver.expect_request(
+            "/ENDPOINT-A/persons",
+            query_string={"sourceId": "someSourceId", "page": str(i + 1), "size": "30"},
+        ).respond_with_json(responses[i])
+
+        httpserver.expect_request(
+            "/ENDPOINT-B/persons",
+            query_string={"sourceId": "someSourceId", "page": str(i + 1), "size": "30"},
+        ).respond_with_json(responses[i])
+
+    # print(httpserver.__dict__["handlers"][0].__dict__)
+    # Sanity
+
+    assert (
+        requests.get(
+            httpserver.url_for("/ENDPOINT-A/persons"),
+            params={"sourceId": "someSourceId", "page": "1", "size": "30"},
+        ).json()
+        == responses[0]
+    )
+
+    assert (
+        requests.get(
+            httpserver.url_for("/ENDPOINT-B/persons"),
+            params={"sourceId": "someSourceId", "page": "1", "size": "30"},
+        ).json()
+        == responses[0]
+    )
+
+    ipif = IPIF()
+    ipif.add_endpoint("ENDPOINT-A", uri=httpserver.url_for("/ENDPOINT-A/"))
+    ipif.add_endpoint("ENDPOINT-B", uri=httpserver.url_for("/ENDPOINT-B/"))
+
+    results_dict = ipif._query_request_from_endpoints(
+        "Persons", {"sourceId": "someSourceId"}
+    )
+
+    assert len(results_dict) == 2
+
+    # Finally, test that results_iterator produces a list of persons
+    for expected, resp in zip(yield_responses(responses), results_dict["ENDPOINT-A"]):
+        assert expected == resp
+
+    for expected, resp in zip(yield_responses(responses), results_dict["ENDPOINT-B"]):
+        assert expected == resp
+
+
+def test_queryset_makes_request_only_when_data_required(mocker):
+    RESULTS = {"ENDPOINT-A": [], "ENDPOINT-B": []}
+
+    mocked_query_request_from_endpoints = mocker.patch.object(
+        IPIF,
+        "_query_request_from_endpoints",
+        autospec=True,
+        return_value=RESULTS,
+    )
+
+    ipif = IPIF()
+
+    # Check we've mocked this properly...
+    assert (
+        ipif._query_request_from_endpoints("Persons", {"sourceId": "someSourceId"})
+        == RESULTS
+    )
+    assert mocked_query_request_from_endpoints.call_count == 1
+    mocked_query_request_from_endpoints.reset_mock()
+    assert mocked_query_request_from_endpoints.call_count == 0
+
+    # Right, now to business...
+
+    qs = ipif.Persons.factoidId("aFactoidId")
+
+    # It should not have been called by just building a queryset
+    assert mocked_query_request_from_endpoints.call_count == 0
+
+    for person in qs:
+        pass
+
+    assert mocked_query_request_from_endpoints.call_count == 1
+
+    mocked_query_request_from_endpoints.reset_mock()
+
+    p = qs.first()
+
+    assert mocked_query_request_from_endpoints.call_count == 1

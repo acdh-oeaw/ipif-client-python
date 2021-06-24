@@ -2,6 +2,7 @@ import time
 from functools import wraps
 
 from munch import Munch as Bunch
+
 from dateutil.parser import *
 import math
 import requests
@@ -62,8 +63,13 @@ class Statements(list):
 class IPIFQuerySet:
     def __init__(self, search_params=None, *args, **kwargs):
         self._search_params = search_params or {}
+        self._data = []
 
     def _spawn_new_with_search_param(param: str):
+        """Takes name of a parameter and returns function
+        which creates a new instance of IPIFQuerySet with its param=arg
+        accumulated"""
+
         def inner_func(self, value):
             class_name = self.__class__.__name__.replace("sQuerySet", "")
             if param == class_name.lower() + "Id":
@@ -86,6 +92,38 @@ class IPIFQuerySet:
     st = _spawn_new_with_search_param("st")
     personId = _spawn_new_with_search_param("personId")
     p = _spawn_new_with_search_param("p")
+
+    @staticmethod
+    def _trivially_merge(data_dict):
+        ## UNDERACHIEVERS MUST TRY HARDER
+        print(data_dict)
+        results_list = []
+        for endpoint_name, result_list in data_dict.items():
+            results_list + result_list
+
+        return results_list
+
+    def _with_data(func):
+        """ """
+
+        def inner(self, *args, **kwargs):
+            if not self._data:
+                self._data = self._trivially_merge(
+                    self._ipif_instance._query_request_from_endpoints(
+                        "PERSONS", self._search_params
+                    )
+                )
+            return func(self, *args, **kwargs)
+
+        return inner
+
+    @_with_data
+    def __iter__(self):
+        yield from self._data
+
+    @_with_data
+    def first(self):
+        pass
 
 
 class IPIFType:
@@ -518,6 +556,8 @@ class IPIF:
     ):
         URL = f"{self._endpoints[endpoint_name]}{ipif_type.lower()}"
 
+        # CACHE IT HERE SO WE DON'T NEED TO WORRY ELSEWHERE.
+
         try:
 
             resp = requests.get(URL, params=search_params)
@@ -571,7 +611,21 @@ class IPIF:
     def _query_request_from_endpoints(
         self, ipif_type, search_params, statement_params={}
     ):
-        pass
+        results = {}
+
+        with yaspin(Spinners.earth, color="magenta", timer=True) as sp:
+
+            for endpoint_name in self._endpoints:
+                sp.text = f"Searching for {ipif_type} with {str(search_params)}, {str(statement_params)} from {endpoint_name}"
+                result = list(
+                    self._iterate_results_from_single_endpoint(
+                        endpoint_name, ipif_type, search_params, statement_params
+                    )
+                )
+                if result:
+                    results[endpoint_name] = result
+
+        return results
 
 
 def timeout_wrapper(t):
