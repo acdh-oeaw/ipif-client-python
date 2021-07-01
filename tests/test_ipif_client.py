@@ -721,4 +721,5 @@ ok, stop stop stop... think about how the search API works
     --- THIS is a list of all the persons matching the query... BUT,
     -- what they are lacking is all the factoids... so we need to try all the other endpoints
     -- that had not previously returned a result, so get their factoids.
+    -- # CAN this last bit be lazy?
 """
