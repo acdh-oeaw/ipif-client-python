@@ -658,7 +658,7 @@ def test_query_requests_from_endpoints(httpserver):
 
 
 def test_queryset_makes_request_only_when_data_required(mocker):
-    RESULTS = {"ENDPOINT-A": [], "ENDPOINT-B": []}
+    RESULTS = {"ENDPOINT-A": ["endpointAThing"], "ENDPOINT-B": ["endpointBThing"]}
 
     mocked_query_request_from_endpoints = mocker.patch.object(
         IPIF,
@@ -691,7 +691,34 @@ def test_queryset_makes_request_only_when_data_required(mocker):
     assert mocked_query_request_from_endpoints.call_count == 1
 
     mocked_query_request_from_endpoints.reset_mock()
+    qs._data = []
 
     p = qs.first()
 
     assert mocked_query_request_from_endpoints.call_count == 1
+
+    mocked_query_request_from_endpoints.reset_mock()
+    qs._data = []
+
+    p = qs[0]
+
+    assert mocked_query_request_from_endpoints.call_count == 1
+
+
+"""
+ok, stop stop stop... think about how the search API works
+
+
+-- search for Person, Source by parameter...
+-- get {endpointA: [list-of-persons], endpointB: [list-of-persons]}
+-- merge the two lists...:
+    -- what makes two Persons the same?
+        - same ID
+        - one of the same URIs
+        ===> so, build a dict of results... start with one list and pile em all in
+            -- then go through other lists, comparing URIs and ID for matches, combine ...
+
+    --- THIS is a list of all the persons matching the query... BUT,
+    -- what they are lacking is all the factoids... so we need to try all the other endpoints
+    -- that had not previously returned a result, so get their factoids.
+"""

@@ -96,15 +96,17 @@ class IPIFQuerySet:
     @staticmethod
     def _trivially_merge(data_dict):
         ## UNDERACHIEVERS MUST TRY HARDER
-        print(data_dict)
+
         results_list = []
         for endpoint_name, result_list in data_dict.items():
-            results_list + result_list
+            print(result_list)
+            results_list += result_list
 
         return results_list
 
     def _with_data(func):
-        """ """
+        """Method decorator to get data as required before
+        calling the desired function."""
 
         def inner(self, *args, **kwargs):
             if not self._data:
@@ -124,6 +126,11 @@ class IPIFQuerySet:
     @_with_data
     def first(self):
         pass
+
+    @_with_data
+    def __getitem__(self, n):
+
+        return self._data[n]
 
 
 class IPIFType:
