@@ -4,13 +4,13 @@ import time
 
 from ipif_client import __version__
 
-from ipif_client.ipif import (
-    IPIF,
+from ipif_client.ipif import IPIF
+from ipif_client.exceptions import (
     IPIFClientDataError,
-    IPIFQuerySet,
     IPIFClientConfigurationError,
     IPIFClientQueryError,
 )
+from ipif_client.ipif_queryset import IPIFQuerySet
 
 from .test_data import (
     TEST_FACTOID_RESPONSE,
