@@ -35,6 +35,10 @@ class IPIFQuerySet:
     p = _spawn_new_with_search_param("p")
 
     @staticmethod
+    def _merge_results_set(data_dict):
+        pass
+
+    @staticmethod
     def _trivially_merge(data_dict):
         ## UNDERACHIEVERS MUST TRY HARDER
 

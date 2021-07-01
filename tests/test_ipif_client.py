@@ -704,6 +704,8 @@ def test_queryset_makes_request_only_when_data_required(mocker):
 
     assert mocked_query_request_from_endpoints.call_count == 1
 
+    assert list(qs) == ["endpointAThing", "endpointBThing"]
+
 
 """
 ok, stop stop stop... think about how the search API works
