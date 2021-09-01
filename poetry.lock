@@ -443,6 +443,22 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "multi-key-dict"
+version = "2.0.3"
+description = "Multi key dictionary implementation"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "multilookupdict"
+version = "0.1.5"
+description = "A dict-like container that allows multiple keys to address the same value."
+category = "main"
+optional = false
+python-versions = ">=3.9,<4.0"
+
+[[package]]
 name = "munch"
 version = "2.5.0"
 description = "A dot-accessible dictionary (a la JavaScript objects)"
@@ -569,6 +585,14 @@ traitlets = ">=4.2.1"
 docs = ["sphinx", "nbsphinx", "sphinxcontrib-github-alt", "sphinx-rtd-theme", "myst-parser"]
 json-logging = ["json-logging"]
 test = ["pytest", "coverage", "requests", "nbval", "selenium", "pytest-cov", "requests-unixsocket"]
+
+[[package]]
+name = "ordered-set"
+version = "4.0.2"
+description = "A set that remembers its order, and allows looking up its items by their index in that order."
+category = "main"
+optional = false
+python-versions = ">=3.5"
 
 [[package]]
 name = "packaging"
@@ -1017,7 +1041,7 @@ termcolor = ">=1.1.0,<2.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f919f4f2c2a22c06bd4e0e120970a461450201a87bf95c6f20777a74dfa25b20"
+content-hash = "404174e80be82c9e5a8f788a7b38b5d63a7125e18ec9a697a984583ef2f9b98c"
 
 [metadata.files]
 appdirs = [
@@ -1306,6 +1330,16 @@ more-itertools = [
     {file = "more-itertools-8.8.0.tar.gz", hash = "sha256:83f0308e05477c68f56ea3a888172c78ed5d5b3c282addb67508e7ba6c8f813a"},
     {file = "more_itertools-8.8.0-py3-none-any.whl", hash = "sha256:2cf89ec599962f2ddc4d568a05defc40e0a587fbc10d5989713638864c36be4d"},
 ]
+multi-key-dict = [
+    {file = "multi_key_dict-2.0.3.tar.gz", hash = "sha256:deebdec17aa30a1c432cb3f437e81f8621e1c0542a0c0617a74f71e232e9939e"},
+    {file = "multi_key_dict-2.0.3.win-amd64.exe", hash = "sha256:fb67a532d7361a66820aa1e8fe6c0c939f4c34a3a09a3e8db199ce7b77c4fb78"},
+    {file = "multi_key_dict-2.0.3.win32.exe", hash = "sha256:cb1e00aa9d8192496cc0cc040f6d9602f35e4cf099e866248be06b04fd45b42b"},
+    {file = "multi_key_dict-2.0.3.zip", hash = "sha256:3a1e1fc705a30a7de1a153ec2992b3ca3655ccd9225d2e427fe6525c8f160d6d"},
+]
+multilookupdict = [
+    {file = "multilookupdict-0.1.5-py3-none-any.whl", hash = "sha256:34b1fa6fdaa25c4181cd2512313e148e8b2169ad732b221445718e6662bf7a1f"},
+    {file = "multilookupdict-0.1.5.tar.gz", hash = "sha256:151883a26a1b571dd136bc33391b64f784a02d07633cf6096e9b1d768ab255aa"},
+]
 munch = [
     {file = "munch-2.5.0-py2.py3-none-any.whl", hash = "sha256:6f44af89a2ce4ed04ff8de41f70b226b984db10a91dcc7b9ac2efc1c77022fdd"},
     {file = "munch-2.5.0.tar.gz", hash = "sha256:2d735f6f24d4dba3417fa448cae40c6e896ec1fdab6cdb5e6510999758a4dbd2"},
@@ -1333,6 +1367,9 @@ nest-asyncio = [
 notebook = [
     {file = "notebook-6.4.0-py3-none-any.whl", hash = "sha256:f7f0a71a999c7967d9418272ae4c3378a220bd28330fbfb49860e46cf8a5838a"},
     {file = "notebook-6.4.0.tar.gz", hash = "sha256:9c4625e2a2aa49d6eae4ce20cbc3d8976db19267e32d2a304880e0c10bf8aef9"},
+]
+ordered-set = [
+    {file = "ordered-set-4.0.2.tar.gz", hash = "sha256:ba93b2df055bca202116ec44b9bead3df33ea63a7d5827ff8e16738b97f33a95"},
 ]
 packaging = [
     {file = "packaging-20.9-py2.py3-none-any.whl", hash = "sha256:67714da7f7bc052e064859c05c595155bd1ee9f69f76557e21f051443c20947a"},

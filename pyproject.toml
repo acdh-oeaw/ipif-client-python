@@ -12,6 +12,9 @@ bunch = "^1.0.1"
 python-dateutil = "^2.8.1"
 yaspin = "^2.0.0"
 munch = "^2.5.0"
+multi_key_dict = "^2.0.3"
+ordered-set = "^4.0.2"
+multilookupdict = "^0.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

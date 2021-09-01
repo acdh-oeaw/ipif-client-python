@@ -121,6 +121,9 @@ class IPIFType:
         """Gets IPIF entity by @id from all endpoints. Combines Persons and Sources to
         a single entity."""
 
+        #### HERE... move all the requesting logic here... oh no... the
+        ## request_id_from_endpoints needs to do all the grabbing of shit
+
         resp = cls._ipif_instance._request_id_from_endpoints(
             cls.__name__.lower() + "s", id_string
         )

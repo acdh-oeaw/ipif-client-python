@@ -143,10 +143,13 @@ class IPIF:
             return {"IPIF_STATUS": "Request failed"}
 
     @_error_if_no_endpoints
-    def _request_id_from_endpoints(self, ipif_type, id_string):
+    def _request_id_from_endpoints(self, ipif_type, id_string, specify_endpoints=set()):
         results = {}
+
+        endpoints_to_get = specify_endpoints or self._endpoints
+
         with yaspin(Spinners.earth, color="magenta", timer=True) as sp:
-            for endpoint_name in self._endpoints:
+            for endpoint_name in endpoints_to_get:
                 sp.text = f"Getting {ipif_type} @id='{id_string}' from {endpoint_name}"
 
                 result = self._request_single_object_by_id(
